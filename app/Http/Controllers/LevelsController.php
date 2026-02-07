@@ -11,8 +11,10 @@ use Inertia\Response;
 
 class LevelsController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $departmentId = $request->session()->get('selected_department_id');
+
         $levels = Level::with('building.location')
             ->orderBy('level_number')
             ->orderBy('name')

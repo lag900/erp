@@ -38,10 +38,15 @@ class PermissionsSeeder extends Seeder
             'role-create',
             'role-list',
             'role-edit',
-            'role-delete',
-            'permission-create',
-            'permission-list',
-            'permission-delete',
+            'category-list',
+            'sub_category-list',
+            'asset-list',
+            'asset_info-list',
+            'news-create',
+            'news-list',
+            'news-edit',
+            'news-delete',
+            'media-settings-manage',
         ])->toArray();
 
         foreach ($permissions as $permission) {
@@ -81,6 +86,14 @@ class PermissionsSeeder extends Seeder
             'room-list',
             'category-list',
             'sub_category-list',
+        ]);
+
+        $mediaRole = Role::updateOrCreate(['name' => 'MediaManager', 'guard_name' => 'web']);
+        $mediaRole->syncPermissions([
+            'news-create',
+            'news-list',
+            'news-edit',
+            'news-delete',
         ]);
     }
 }

@@ -11,15 +11,18 @@ use Inertia\Response;
 
 class BuildingsController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $buildings = Building::with('location')
+        $departmentId = $request->session()->get('selected_department_id');
+
+        $buildings = Building::with(['location'])
             ->orderBy('name')
             ->get()
             ->map(fn (Building $building) => [
                 'id' => $building->id,
                 'name' => $building->name,
                 'code' => $building->code,
+                'image_url' => $building->image_url,
                 'location' => $building->location?->name,
             ]);
 
@@ -45,7 +48,12 @@ class BuildingsController extends Controller
             'location_id' => ['required', 'integer', 'exists:locations,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:100'],
+            'image' => ['nullable', 'image', 'max:2048'],
         ]);
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image')->store('buildings', 'public');
+        }
 
         Building::create($data);
 
@@ -59,7 +67,7 @@ class BuildingsController extends Controller
             ->get(['id', 'name']);
 
         return Inertia::render('Buildings/Edit', [
-            'building' => $building->only('id', 'name', 'code', 'location_id'),
+            'building' => $building->only('id', 'name', 'code', 'location_id', 'image_url'),
             'locations' => $locations,
         ]);
     }
@@ -70,7 +78,15 @@ class BuildingsController extends Controller
             'location_id' => ['required', 'integer', 'exists:locations,id'],
             'name' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:100'],
+            'image' => ['nullable', 'image', 'max:2048'],
         ]);
+
+        if ($request->hasFile('image')) {
+            if ($building->image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($building->image);
+            }
+            $data['image'] = $request->file('image')->store('buildings', 'public');
+        }
 
         $building->update($data);
 

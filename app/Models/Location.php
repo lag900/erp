@@ -13,7 +13,15 @@ class Location extends Model
     protected $fillable = [
         'name',
         'description',
+        'image',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image ? asset('storage/' . $this->image) : null;
+    }
 
     public function buildings(): HasMany
     {

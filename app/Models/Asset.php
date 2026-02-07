@@ -9,16 +9,35 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Asset extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToDepartment;
 
     protected $fillable = [
-        'department_id',
+        'department_id', // Owner Department
         'room_id',
         'sub_category_id',
         'note',
         'count',
         'peered_asset_id',
+        'serial_number',
+        'condition',
+        'is_shared',
+        'created_by_id',
     ];
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_id');
+    }
+
+    public function sharedDepartments(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'asset_department');
+    }
+
+    public function movements(): HasMany
+    {
+        return $this->hasMany(AssetMovement::class);
+    }
 
     public function department(): BelongsTo
     {

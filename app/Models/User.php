@@ -23,7 +23,17 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'image',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image 
+            ? asset('storage/' . $this->image) 
+            : 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
+    }
 
     /**
      * The attributes that should be hidden for serialization.

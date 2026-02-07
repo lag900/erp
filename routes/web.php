@@ -16,18 +16,31 @@ use App\Http\Controllers\RolesController;
 use App\Http\Controllers\RoomsController;
 use App\Http\Controllers\SubCategoriesController;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\Media\MediaSettingsController;
+use App\Http\Controllers\Media\NewsController;
+use App\Http\Controllers\Public\NewsController as PublicNewsController;
+use App\Models\News as NewsModel;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    $news = NewsModel::where('status', 'published')
+        ->orderBy('publish_date', 'desc')
+        ->take(3)
+        ->get();
+
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
+        'initialNews' => $news,
     ]);
 });
+
+Route::get('/api/news', [PublicNewsController::class, 'index'])->name('api.news.index');
+Route::get('/api/news/{id}', [PublicNewsController::class, 'show'])->name('api.news.show');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -42,6 +55,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Media & News Management - Restricted to Media Role or users with explicit permissions
+Route::middleware(['auth', 'verified', 'role_or_permission:Media|news-list|media-settings-manage'])->group(function () {
+    
+    // News Management
+    Route::get('/media/news', [NewsController::class, 'index'])->name('media.news.index');
+    Route::get('/media/news/create', [NewsController::class, 'create'])->name('media.news.create');
+    Route::post('/media/news', [NewsController::class, 'store'])->name('media.news.store');
+    Route::get('/media/news/{news}/edit', [NewsController::class, 'edit'])->name('media.news.edit');
+    Route::put('/media/news/{news}', [NewsController::class, 'update'])->name('media.news.update');
+    Route::delete('/media/news/{news}', [NewsController::class, 'destroy'])->name('media.news.destroy');
+
+    // Media Settings
+    Route::get('/media/settings', [MediaSettingsController::class, 'edit'])->name('media.settings.edit');
+    Route::put('/media/settings', [MediaSettingsController::class, 'update'])->name('media.settings.update');
 });
 
 Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:assets'])->group(function () {

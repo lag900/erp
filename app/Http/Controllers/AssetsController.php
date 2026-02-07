@@ -25,7 +25,6 @@ class AssetsController extends Controller
             'room.level.building.location',
             'subCategory.category',
         ])
-            ->when($departmentId, fn ($query) => $query->where('department_id', $departmentId))
             ->orderByDesc('id')
             ->get()
             ->map(function (Asset $asset) {
@@ -37,9 +36,13 @@ class AssetsController extends Controller
                 return [
                     'id' => $asset->id,
                     'note' => $asset->note,
+                    'serial_number' => $asset->serial_number,
+                    'condition' => $asset->condition,
+                    'is_shared' => (bool) $asset->is_shared,
                     'count' => $asset->count ?? 1,
                     'category' => $asset->subCategory?->category?->name,
                     'subCategory' => $asset->subCategory?->name,
+                    'owner_department' => $asset->department?->name,
                     'room' => [
                         'name' => $room?->name,
                         'code' => $room?->code,
@@ -94,11 +97,8 @@ class AssetsController extends Controller
 
         $roomAssetsSummary = [];
         if ($request->has('room_id')) {
-            $departmentId = $request->session()->get('selected_department_id');
             $roomId = $request->input('room_id');
-            
             $roomAssetsSummary = Asset::where('room_id', $roomId)
-                ->when($departmentId, fn ($query) => $query->where('department_id', $departmentId))
                 ->with('subCategory.category')
                 ->get()
                 ->groupBy('sub_category_id')
@@ -118,9 +118,12 @@ class AssetsController extends Controller
                 ->toArray();
         }
 
+        $departments = \App\Models\Department::orderBy('name')->get(['id', 'name']);
+
         return Inertia::render('Assets/Create', [
             'rooms' => $rooms,
             'subCategories' => $subCategories,
+            'departments' => $departments,
             'roomAssetsSummary' => $roomAssetsSummary,
         ]);
     }
@@ -141,6 +144,11 @@ class AssetsController extends Controller
             $rules['room_id'] = ['required', 'integer', 'exists:rooms,id'];
             $rules['sub_category_id'] = ['required', 'integer', 'exists:sub_categories,id'];
             $rules['note'] = ['nullable', 'string'];
+            $rules['serial_number'] = ['nullable', 'string', 'max:255'];
+            $rules['condition'] = ['required', 'in:active,maintenance,damaged,disposed'];
+            $rules['is_shared'] = ['required', 'boolean'];
+            $rules['shared_department_ids'] = ['array'];
+            $rules['shared_department_ids.*'] = ['integer', 'exists:departments,id'];
             $rules['count'] = ['required', 'integer', 'min:1'];
             $rules['infos'] = ['array'];
             $rules['infos.*.key'] = ['nullable', 'string'];
@@ -151,8 +159,12 @@ class AssetsController extends Controller
             $rules['base_asset.room_id'] = ['required', 'integer', 'exists:rooms,id'];
             $rules['base_asset.sub_category_id'] = ['required', 'integer', 'exists:sub_categories,id'];
             $rules['base_asset.note'] = ['nullable', 'string'];
+            $rules['base_asset.condition'] = ['required', 'in:active,maintenance,damaged,disposed'];
+            $rules['base_asset.is_shared'] = ['required', 'boolean'];
+            $rules['base_asset.shared_department_ids'] = ['array'];
             $rules['peered_assets'] = ['array'];
             $rules['peered_assets.*.sub_category_id'] = ['required', 'integer', 'exists:sub_categories,id'];
+            $rules['peered_assets.*.serial_number'] = ['nullable', 'string', 'max:255'];
             $rules['peered_assets.*.infos'] = ['array'];
             $rules['peered_assets.*.infos.*.key'] = ['nullable', 'string'];
             $rules['peered_assets.*.infos.*.value'] = ['nullable', 'string'];
@@ -170,7 +182,15 @@ class AssetsController extends Controller
                     'sub_category_id' => $data['sub_category_id'],
                     'note' => $data['note'] ?? null,
                     'count' => $data['count'] ?? 1,
+                    'serial_number' => $data['serial_number'] ?? null,
+                    'condition' => $data['condition'],
+                    'is_shared' => $data['is_shared'],
+                    'created_by_id' => $request->user()->id,
                 ]);
+
+                if ($data['is_shared'] && !empty($data['shared_department_ids'])) {
+                    $asset->sharedDepartments()->sync($data['shared_department_ids']);
+                }
 
                 $infos = [];
                 foreach ($data['infos'] ?? [] as $index => $info) {
@@ -204,7 +224,14 @@ class AssetsController extends Controller
                     'sub_category_id' => $data['base_asset']['sub_category_id'],
                     'note' => $data['base_asset']['note'] ?? null,
                     'count' => 1, // Default count for base asset
+                    'condition' => $data['base_asset']['condition'],
+                    'is_shared' => $data['base_asset']['is_shared'],
+                    'created_by_id' => $request->user()->id,
                 ]);
+
+                if ($data['base_asset']['is_shared'] && !empty($data['base_asset']['shared_department_ids'])) {
+                    $baseAsset->sharedDepartments()->sync($data['base_asset']['shared_department_ids']);
+                }
 
                 // Create peered assets linked to base asset
                 foreach ($data['peered_assets'] ?? [] as $peeredIndex => $peeredData) {
@@ -214,7 +241,15 @@ class AssetsController extends Controller
                         'sub_category_id' => $peeredData['sub_category_id'],
                         'count' => 1, // Default count for peered assets
                         'peered_asset_id' => $baseAsset->id,
+                        'serial_number' => $peeredData['serial_number'] ?? null,
+                        'condition' => $data['base_asset']['condition'], // Peers inherit condition and sharing from base in shared entries
+                        'is_shared' => $data['base_asset']['is_shared'],
+                        'created_by_id' => $request->user()->id,
                     ]);
+
+                    if ($data['base_asset']['is_shared'] && !empty($data['base_asset']['shared_department_ids'])) {
+                        $peeredAsset->sharedDepartments()->sync($data['base_asset']['shared_department_ids']);
+                    }
 
                     // Save infos for each peered asset
                     $peeredInfos = [];
@@ -290,9 +325,13 @@ class AssetsController extends Controller
                 'id' => $asset->id,
                 'note' => $asset->note,
                 'count' => $asset->count ?? 1,
+                'serial_number' => $asset->serial_number,
+                'condition' => $asset->condition,
+                'is_shared' => (bool) $asset->is_shared,
                 'peered_asset_id' => $asset->peered_asset_id,
                 'category' => $asset->subCategory?->category?->name,
                 'subCategory' => $asset->subCategory?->name,
+                'owner_department' => $asset->department?->name,
                 'room' => [
                     'id' => $room?->id,
                     'name' => $room?->name,
@@ -309,6 +348,8 @@ class AssetsController extends Controller
                         'image_url' => $info->image_url,
                     ];
                 }),
+                'shared_departments' => $asset->sharedDepartments->pluck('name')->values(),
+                'movements' => $asset->movements()->with(['fromRoom', 'toRoom', 'fromDepartment', 'toDepartment', 'user'])->orderByDesc('created_at')->get(),
             ],
             'roomAssetsSummary' => $roomAssetsSummary,
         ]);
@@ -318,9 +359,7 @@ class AssetsController extends Controller
     {
         $departmentId = $request->session()->get('selected_department_id');
 
-        abort_unless($departmentId && $asset->department_id === $departmentId, 403);
-
-        $asset->load(['infos']);
+        $asset->load(['infos', 'sharedDepartments']);
 
         $rooms = Room::with('level.building.location')
             ->orderBy('name')
@@ -355,6 +394,8 @@ class AssetsController extends Controller
                         : $subCategory->name,
                 ];
             });
+            
+        $departments = \App\Models\Department::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Assets/Edit', [
             'asset' => [
@@ -363,6 +404,10 @@ class AssetsController extends Controller
                 'sub_category_id' => $asset->sub_category_id,
                 'note' => $asset->note,
                 'count' => $asset->count ?? 1,
+                'serial_number' => $asset->serial_number,
+                'condition' => $asset->condition,
+                'is_shared' => (bool) $asset->is_shared,
+                'shared_department_ids' => $asset->sharedDepartments->pluck('id')->values(),
                 'infos' => $asset->infos->map(function ($info) {
                     return [
                         'id' => $info->id,
@@ -374,6 +419,7 @@ class AssetsController extends Controller
             ],
             'rooms' => $rooms,
             'subCategories' => $subCategories,
+            'departments' => $departments,
         ]);
     }
 
@@ -388,6 +434,11 @@ class AssetsController extends Controller
             'sub_category_id' => ['required', 'integer', 'exists:sub_categories,id'],
             'note' => ['nullable', 'string'],
             'count' => ['required', 'integer', 'min:1'],
+            'serial_number' => ['nullable', 'string', 'max:255'],
+            'condition' => ['required', 'in:active,maintenance,damaged,disposed'],
+            'is_shared' => ['required', 'boolean'],
+            'shared_department_ids' => ['array'],
+            'shared_department_ids.*' => ['integer', 'exists:departments,id'],
             'infos' => ['array'],
             'infos.*.id' => ['nullable', 'integer', 'exists:asset_infos,id'],
             'infos.*.key' => ['nullable', 'string'],
@@ -395,13 +446,38 @@ class AssetsController extends Controller
             'infos.*.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ]);
 
-        DB::transaction(function () use ($data, $asset, $request) {
+        $oldRoomId = $asset->room_id;
+        $oldDepartmentId = $asset->department_id;
+
+        DB::transaction(function () use ($data, $asset, $request, $oldRoomId, $oldDepartmentId) {
             $asset->update([
                 'room_id' => $data['room_id'],
                 'sub_category_id' => $data['sub_category_id'],
                 'note' => $data['note'] ?? null,
                 'count' => $data['count'] ?? 1,
+                'serial_number' => $data['serial_number'] ?? null,
+                'condition' => $data['condition'],
+                'is_shared' => $data['is_shared'],
             ]);
+
+            if ($data['is_shared']) {
+                $asset->sharedDepartments()->sync($data['shared_department_ids'] ?? []);
+            } else {
+                $asset->sharedDepartments()->detach();
+            }
+
+            // Record movement if room changed
+            if ($oldRoomId != $data['room_id']) {
+                \App\Models\AssetMovement::create([
+                    'asset_id' => $asset->id,
+                    'from_room_id' => $oldRoomId,
+                    'to_room_id' => $data['room_id'],
+                    'from_department_id' => $oldDepartmentId,
+                    'to_department_id' => $oldDepartmentId,
+                    'user_id' => $request->user()->id,
+                    'reason' => 'Location update via Edit',
+                ]);
+            }
 
             $incoming = collect($data['infos'] ?? [])
                 ->filter(fn ($info) => !empty($info['key']))

@@ -13,9 +13,12 @@ use Spatie\Permission\Models\Role;
 
 class UsersController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $departmentId = $request->session()->get('selected_department_id');
+
         $users = User::with(['roles', 'departments'])
+            ->when($departmentId && !$request->user()->hasRole('SuperAdmin'), fn ($query) => $query->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId)))
             ->orderBy('name')
             ->get()
             ->map(function (User $user) {
@@ -23,13 +26,28 @@ class UsersController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'image' => $user->image,
+                    'image_url' => $user->image_url,
                     'roles' => $user->roles->pluck('name')->values(),
+                    'role_id' => $user->roles->first()?->id,
                     'departments' => $user->departments->pluck('name')->values(),
+                    'department_ids' => $user->departments->pluck('id')->values(),
+                    'default_department_id' => $user->departments->where('pivot.is_default', true)->first()?->id,
                 ];
             });
 
+        $roles = Role::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $departments = Department::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return Inertia::render('Users/Index', [
             'users' => $users,
+            'roles' => $roles,
+            'departments' => $departments,
         ]);
     }
 
@@ -70,27 +88,28 @@ class UsersController extends Controller
         $role = Role::findOrFail($data['role_id']);
         $user->assignRole($role);
 
+        \Illuminate\Support\Facades\Log::info('User created: ' . $user->email . ' with role: ' . $role->name);
+
         $departmentIds = collect($data['department_ids'] ?? [])->unique()->values();
         $defaultDepartmentId = $data['default_department_id'] ?? null;
 
-        if ($departmentIds->isEmpty()) {
-            return redirect()->route('users.index');
+        if ($departmentIds->isNotEmpty()) {
+            if ($departmentIds->count() === 1) {
+                $defaultDepartmentId = $departmentIds->first();
+            }
+
+            $pivotData = $departmentIds->mapWithKeys(function ($departmentId) use ($defaultDepartmentId, $role) {
+                return [
+                    $departmentId => [
+                        'is_default' => $defaultDepartmentId === $departmentId,
+                        'role_id' => $role->id,
+                    ],
+                ];
+            });
+
+            $user->departments()->sync($pivotData->all());
+            \Illuminate\Support\Facades\Log::info('Synced ' . $departmentIds->count() . ' departments for user: ' . $user->email);
         }
-
-        if ($departmentIds->count() === 1) {
-            $defaultDepartmentId = $departmentIds->first();
-        }
-
-        $pivotData = $departmentIds->mapWithKeys(function ($departmentId) use ($defaultDepartmentId, $role) {
-            return [
-                $departmentId => [
-                    'is_default' => $defaultDepartmentId === $departmentId,
-                    'role_id' => $role->id,
-                ],
-            ];
-        });
-
-        $user->departments()->sync($pivotData->all());
 
         return redirect()->route('users.index');
     }

@@ -31,65 +31,69 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Log in" />
+        <Head title="Secure Login" />
 
-        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
+        <div v-if="status" class="mb-4 rounded-md bg-green-50 p-4 text-sm font-medium text-green-700 shadow-sm">
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit">
+        <h2 class="mb-6 text-center text-xl font-bold text-gray-800">
+            Secure Login
+        </h2>
+
+        <form @submit.prevent="submit" class="space-y-5">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="Email Address" class="font-semibold text-gray-700" />
 
                 <TextInput
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full py-2.5"
                     v-model="form.email"
                     required
                     autofocus
                     autocomplete="username"
+                    placeholder="admin@batu.edu.eg"
                 />
 
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+            <div>
+                <InputLabel for="password" value="Password" class="font-semibold text-gray-700" />
 
                 <TextInput
                     id="password"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full py-2.5"
                     v-model="form.password"
                     required
                     autocomplete="current-password"
+                    placeholder="••••••••"
                 />
 
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
-            <div class="mt-4 block">
+            <div class="flex items-center justify-between">
                 <label class="flex items-center">
                     <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
-                        >Remember me</span
-                    >
+                    <span class="ms-2 text-sm text-gray-600">Remember me</span>
                 </label>
-            </div>
 
-            <div class="mt-4 flex items-center justify-end">
                 <Link
                     v-if="canResetPassword"
                     :href="route('password.request')"
-                    class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    class="rounded-md text-sm font-medium text-primary hover:text-primary-hover focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
-                    Forgot your password?
+                    Forgot password?
                 </Link>
+            </div>
 
+            <div class="mt-6">
                 <PrimaryButton
-                    class="ms-4"
-                    :class="{ 'opacity-25': form.processing }"
+                    class="w-full justify-center py-3 text-base font-bold shadow-md transition-all hover:shadow-lg"
+                    :class="{ 'opacity-70 cursor-not-allowed': form.processing }"
                     :disabled="form.processing"
                 >
                     Log in

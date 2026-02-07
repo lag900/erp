@@ -2,8 +2,10 @@
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 
 defineProps({
     mustVerifyEmail: {
@@ -14,12 +16,38 @@ defineProps({
     },
 });
 
-const user = usePage().props.auth.user;
+const page = usePage();
+const user = computed(() => page.props.auth.user);
 
 const form = useForm({
-    name: user.name,
-    email: user.email,
+    _method: 'PATCH',
+    name: user.value.name,
+    email: user.value.email,
+    image: null,
 });
+
+const photoPreview = ref(null);
+const photoInput = ref(null);
+
+const updatePhotoPreview = () => {
+    const photo = photoInput.value.files[0];
+
+    if (! photo) return;
+
+    form.image = photo;
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        photoPreview.value = e.target.result;
+    };
+
+    reader.readAsDataURL(photo);
+};
+
+const selectNewPhoto = () => {
+    photoInput.value.click();
+};
 </script>
 
 <template>
@@ -35,9 +63,55 @@ const form = useForm({
         </header>
 
         <form
-            @submit.prevent="form.patch(route('profile.update'))"
+            @submit.prevent="form.post(route('profile.update'), {
+                preserveScroll: true,
+                forceFormData: true,
+                onSuccess: () => {
+                    photoPreview.value = null;
+                    if (photoInput.value) {
+                        photoInput.value.value = '';
+                    }
+                },
+            })"
             class="mt-6 space-y-6"
+            enctype="multipart/form-data"
         >
+            <!-- Profile Photo -->
+            <div class="col-span-6 sm:col-span-4">
+                <InputLabel for="photo" value="Photo" />
+
+                <!-- Current Profile Photo -->
+                <div v-show="!photoPreview" class="mt-2">
+                    <img
+                        :src="user.image_url"
+                        :alt="user.name"
+                        class="h-20 w-20 rounded-full object-cover"
+                    >
+                </div>
+
+                <!-- New Profile Photo Preview -->
+                <div v-show="photoPreview" class="mt-2">
+                    <span
+                        class="block h-20 w-20 rounded-full bg-cover bg-no-repeat bg-center"
+                        :style="'background-image: url(\'' + photoPreview + '\');'"
+                    />
+                </div>
+
+                <SecondaryButton class="mt-2" type="button" @click.prevent="selectNewPhoto">
+                    Select A New Photo
+                </SecondaryButton>
+
+                <input
+                    ref="photoInput"
+                    id="photo"
+                    type="file"
+                    class="hidden"
+                    @change="updatePhotoPreview"
+                />
+
+                <InputError :message="form.errors.image" class="mt-2" />
+            </div>
+
             <div>
                 <InputLabel for="name" value="Name" />
 

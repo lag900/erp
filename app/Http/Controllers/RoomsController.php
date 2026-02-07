@@ -11,8 +11,10 @@ use Inertia\Response;
 
 class RoomsController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $departmentId = $request->session()->get('selected_department_id');
+
         $rooms = Room::with('level.building.location')
             ->orderBy('name')
             ->get()

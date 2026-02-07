@@ -1,349 +1,199 @@
 <script setup>
-import { computed, ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import { ref, computed } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import Sidebar from '@/Components/Sidebar.vue';
+import NavLink from '@/Components/NavLink.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import DepartmentSwitcher from '@/Components/DepartmentSwitcher.vue';
 
 const showingNavigationDropdown = ref(false);
 const page = usePage();
 
-const selectedDepartmentName = computed(() => {
-    const payload = page.props.department ?? null;
-    if (!payload || !payload.selectedId || !Array.isArray(payload.list)) {
-        return null;
-    }
-
-    const match = payload.list.find(
-        (department) => department.id === payload.selectedId
-    );
-
-    return match?.name ?? null;
-});
-
 const permissions = computed(() => page.props.auth?.permissions ?? []);
-const enabledFeatures = computed(() => page.props.department?.featuresEnabled ?? []);
+const roles = computed(() => page.props.auth?.roles ?? []);
+const enabledFeatures = computed(() => page.props.departmentContext?.featuresEnabled ?? []);
 
 const can = (permission) => permissions.value.includes(permission);
+const hasRole = (role) => roles.value.includes(role);
 const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100">
-        <div class="flex min-h-screen">
-            <aside class="hidden w-64 flex-col border-r border-gray-200 bg-white lg:flex">
-                <div class="flex items-center gap-3 px-6 py-5">
-                    <Link :href="route('dashboard')">
-                        <ApplicationLogo
-                            class="block h-9 w-auto fill-current text-gray-800"
-                        />
-                    </Link>
-                    <div>
-                        <p class="text-sm font-semibold text-gray-800">ERB</p>
-                        <p class="text-xs text-gray-500">Management System</p>
+    <div class="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
+        <div class="flex h-screen overflow-hidden">
+            <!-- Global Sidebar (Desktop) -->
+            <Sidebar class="hidden flex-shrink-0 lg:flex" />
+
+            <!-- Main Content Area -->
+            <div class="flex flex-1 flex-col overflow-hidden">
+                <!-- Desktop Top Header -->
+                <header class="hidden lg:flex h-16 items-center justify-between border-b border-gray-200 bg-white px-8">
+                    <div class="flex items-center gap-4">
+                        <!-- Left side of header (e.g., Search or Breadcrumbs can go here) -->
                     </div>
-                </div>
 
-                <div v-if="selectedDepartmentName" class="border-b border-gray-200 px-6 pb-4">
-                    <p class="text-xs uppercase text-gray-400">Active Department</p>
-                    <p class="mt-1 text-sm font-semibold text-gray-700">
-                        {{ selectedDepartmentName }}
-                    </p>
-                    <Link
-                        :href="route('departments.select')"
-                        class="mt-2 inline-flex text-xs font-medium text-indigo-600 hover:text-indigo-700"
-                    >
-                        Switch Department
-                    </Link>
-                </div>
-
-                <nav class="flex-1 space-y-1 px-4 pb-6 text-sm">
-                    <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                        Dashboard
-                    </NavLink>
-                    <NavLink
-                        v-if="can('asset-list') && hasFeature('assets')"
-                        :href="route('assets.index')"
-                        :active="route().current('assets.*')"
-                    >
-                        Assets
-                    </NavLink>
-                    <NavLink
-                        v-if="can('location-list') && hasFeature('assets')"
-                        :href="route('locations.index')"
-                        :active="route().current('locations.*')"
-                    >
-                        Locations
-                    </NavLink>
-                    <NavLink
-                        v-if="can('building-list') && hasFeature('assets')"
-                        :href="route('buildings.index')"
-                        :active="route().current('buildings.*')"
-                    >
-                        Buildings
-                    </NavLink>
-                    <NavLink
-                        v-if="can('level-list') && hasFeature('assets')"
-                        :href="route('levels.index')"
-                        :active="route().current('levels.*')"
-                    >
-                        Levels
-                    </NavLink>
-                    <NavLink
-                        v-if="can('room-list') && hasFeature('assets')"
-                        :href="route('rooms.index')"
-                        :active="route().current('rooms.*')"
-                    >
-                        Rooms
-                    </NavLink>
-                    <NavLink
-                        v-if="can('category-list') && hasFeature('assets')"
-                        :href="route('categories.index')"
-                        :active="route().current('categories.*')"
-                    >
-                        Categories
-                    </NavLink>
-                    <NavLink
-                        v-if="can('sub_category-list') && hasFeature('assets')"
-                        :href="route('subcategories.index')"
-                        :active="route().current('subcategories.*')"
-                    >
-                        Subcategories
-                    </NavLink>
-                    <NavLink
-                        v-if="can('department-list')"
-                        :href="route('departments.index')"
-                        :active="route().current('departments.index')"
-                    >
-                        Departments
-                    </NavLink>
-                    <NavLink
-                        v-if="can('feature-toggle')"
-                        :href="route('departments.features')"
-                        :active="route().current('departments.features')"
-                    >
-                        Features
-                    </NavLink>
-                    <NavLink
-                        v-if="can('user-list')"
-                        :href="route('users.index')"
-                        :active="route().current('users.*')"
-                    >
-                        Users
-                    </NavLink>
-                    <NavLink
-                        v-if="can('role-list')"
-                        :href="route('roles.index')"
-                        :active="route().current('roles.*')"
-                    >
-                        Roles
-                    </NavLink>
-                    <NavLink
-                        v-if="can('permission-list')"
-                        :href="route('permissions.index')"
-                        :active="route().current('permissions.*')"
-                    >
-                        Permissions
-                    </NavLink>
-                </nav>
-
-                <div class="border-t border-gray-200 px-6 py-4">
-                    <p class="text-sm font-semibold text-gray-800">
-                        {{ $page.props.auth.user.name }}
-                    </p>
-                    <p class="text-xs text-gray-500">
-                        {{ $page.props.auth.user.email }}
-                    </p>
-                    <div class="mt-3">
-                        <Dropdown align="left" width="48">
+                    <div class="flex items-center gap-4">
+                        <Dropdown align="right" width="48">
                             <template #trigger>
-                                <span class="inline-flex rounded-md">
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition hover:text-gray-800"
-                                    >
-                                        Account
-                                        <svg
-                                            class="ms-2 h-4 w-4"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 20 20"
-                                            fill="currentColor"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                clip-rule="evenodd"
-                                            />
-                                        </svg>
-                                    </button>
-                                </span>
+                                <button class="flex items-center gap-3 rounded-full bg-white p-1 pr-3 text-sm transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 border border-gray-100 shadow-sm">
+                                    <img 
+                                        v-if="$page.props.auth.user.image" 
+                                        :src="$page.props.auth.user.image_url" 
+                                        alt="User Avatar" 
+                                        class="h-8 w-8 rounded-full object-cover"
+                                    />
+                                    <div v-else class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-primary font-bold uppercase text-xs">
+                                         {{ $page.props.auth.user.name.charAt(0) }}
+                                    </div>
+                                    <div class="flex flex-col items-start text-left leading-none">
+                                        <span class="font-bold text-gray-800 tracking-tight">{{ $page.props.auth.user.name }}</span>
+                                        <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-0.5">{{ $page.props.auth.roles && $page.props.auth.roles.length > 0 ? $page.props.auth.roles[0] : 'Member' }}</span>
+                                    </div>
+                                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
                             </template>
                             <template #content>
+                                <div class="px-4 py-2 border-b border-gray-100">
+                                    <p class="text-xs text-gray-400 font-medium uppercase tracking-wider">Account</p>
+                                </div>
                                 <DropdownLink :href="route('profile.edit')">
-                                    Profile
+                                    Profile Settings
                                 </DropdownLink>
-                                <DropdownLink
-                                    :href="route('logout')"
-                                    method="post"
-                                    as="button"
-                                >
+                                <DropdownLink :href="route('logout')" method="post" as="button">
                                     Log Out
                                 </DropdownLink>
                             </template>
                         </Dropdown>
                     </div>
-                </div>
-            </aside>
+                </header>
 
-            <div class="flex min-h-screen flex-1 flex-col">
+                <!-- Mobile Header -->
                 <header class="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 lg:hidden">
                     <button
                         type="button"
-                        class="rounded-md p-2 text-gray-500 hover:bg-gray-100"
+                        class="items-center justify-center rounded-md p-2 text-gray-500 hover:bg-gray-100 focus:outline-none"
                         @click="showingNavigationDropdown = !showingNavigationDropdown"
                     >
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M4 6h16M4 12h16M4 18h16"
-                            />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
 
                     <Link :href="route('dashboard')">
-                        <ApplicationLogo class="block h-8 w-auto fill-current text-gray-800" />
+                         <img 
+                            src="/images/logo.png" 
+                            alt="BATU Logo" 
+                            class="h-8 w-auto object-contain"
+                        />
                     </Link>
 
                     <Dropdown align="right" width="48">
                         <template #trigger>
-                            <button
-                                type="button"
-                                class="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition hover:text-gray-800"
-                            >
-                                {{ $page.props.auth.user.name }}
+                            <button class="flex items-center rounded-full bg-gray-100 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                                <span class="sr-only">Open user menu</span>
+                                <img 
+                                    v-if="$page.props.auth.user.image" 
+                                    :src="$page.props.auth.user.image_url" 
+                                    alt="User Avatar" 
+                                    class="h-8 w-8 rounded-full object-cover"
+                                />
+                                <div v-else class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-primary font-bold uppercase text-xs">
+                                     {{ $page.props.auth.user.name.charAt(0) }}
+                                </div>
                             </button>
                         </template>
                         <template #content>
                             <DropdownLink :href="route('profile.edit')">
                                 Profile
                             </DropdownLink>
-                            <DropdownLink
-                                :href="route('logout')"
-                                method="post"
-                                as="button"
-                            >
+                            <DropdownLink :href="route('logout')" method="post" as="button">
                                 Log Out
                             </DropdownLink>
                         </template>
                     </Dropdown>
                 </header>
 
+                <!-- Mobile Navigation Menu -->
+                 <div
+                    v-if="showingNavigationDropdown"
+                    class="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
+                    @click="showingNavigationDropdown = false"
+                ></div>
+
                 <div
                     v-if="showingNavigationDropdown"
-                    class="border-b border-gray-200 bg-white px-4 py-4 lg:hidden"
+                    class="fixed inset-y-0 left-0 z-50 w-72 transform overflow-y-auto bg-white shadow-xl transition-transform lg:hidden"
                 >
-                    <nav class="space-y-1 text-sm">
-                        <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
+                     <div class="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+                        <div class="flex items-center gap-2">
+                            <img src="/images/logo.png" alt="Logo" class="h-8 w-8" />
+                            <span class="font-bold text-gray-800">BATU Admin</span>
+                        </div>
+                        <button @click="showingNavigationDropdown = false" class="text-gray-500 hover:text-gray-700">
+                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                     </div>
+
+                     <div class="px-4 py-4">
+                         <DepartmentSwitcher />
+                     </div>
+
+                    <nav class="space-y-1 px-4 pb-4">
+                         <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                             Dashboard
                         </NavLink>
-                        <NavLink
-                            v-if="can('asset-list') && hasFeature('assets')"
-                            :href="route('assets.index')"
-                            :active="route().current('assets.*')"
-                        >
-                            Assets
-                        </NavLink>
-                        <NavLink
-                            v-if="can('location-list') && hasFeature('assets')"
-                            :href="route('locations.index')"
-                            :active="route().current('locations.*')"
-                        >
-                            Locations
-                        </NavLink>
-                        <NavLink
-                            v-if="can('building-list') && hasFeature('assets')"
-                            :href="route('buildings.index')"
-                            :active="route().current('buildings.*')"
-                        >
-                            Buildings
-                        </NavLink>
-                        <NavLink
-                            v-if="can('level-list') && hasFeature('assets')"
-                            :href="route('levels.index')"
-                            :active="route().current('level.*')"
-                        >
-                            Levels
-                        </NavLink>
-                        <NavLink
-                            v-if="can('room-list') && hasFeature('assets')"
-                            :href="route('rooms.index')"
-                            :active="route().current('rooms.*')"
-                        >
-                            Rooms
-                        </NavLink>
-                        <NavLink
-                            v-if="can('category-list') && hasFeature('assets')"
-                            :href="route('categories.index')"
-                            :active="route().current('categories.*')"
-                        >
-                            Categories
-                        </NavLink>
-                        <NavLink
-                            v-if="can('sub_category-list') && hasFeature('assets')"
-                            :href="route('subcategories.index')"
-                            :active="route().current('subcategories.*')"
-                        >
-                            Subcategories
-                        </NavLink>
-                        <NavLink
-                            v-if="can('department-list')"
-                            :href="route('departments.index')"
-                            :active="route().current('departments.index')"
-                        >
-                            Departments
-                        </NavLink>
-                        <NavLink
-                            v-if="can('feature-toggle')"
-                            :href="route('departments.features')"
-                            :active="route().current('departments.features')"
-                        >
-                            Features
-                        </NavLink>
-                        <NavLink
-                            v-if="can('user-list')"
-                            :href="route('users.index')"
-                            :active="route().current('users.*')"
-                        >
-                            Users
-                        </NavLink>
-                        <NavLink
-                            v-if="can('role-list')"
-                            :href="route('roles.index')"
-                            :active="route().current('roles.*')"
-                        >
-                            Roles
-                        </NavLink>
-                        <NavLink
-                            v-if="can('permission-list')"
-                            :href="route('permissions.index')"
-                            :active="route().current('permissions.*')"
-                        >
-                            Permissions
-                        </NavLink>
+                         <!-- Asset Management -->
+                        <div v-if="hasFeature('assets')" class="pt-4">
+                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Assets</p>
+                            <NavLink v-if="can('asset-list')" :href="route('assets.index')" :active="route().current('assets.*')">Assets</NavLink>
+                            <NavLink v-if="can('location-list')" :href="route('locations.index')" :active="route().current('locations.*')">Locations</NavLink>
+                            <NavLink v-if="can('building-list')" :href="route('buildings.index')" :active="route().current('buildings.*')">Buildings</NavLink>
+                            <NavLink v-if="can('level-list')" :href="route('levels.index')" :active="route().current('levels.*')">Levels</NavLink>
+                            <NavLink v-if="can('room-list')" :href="route('rooms.index')" :active="route().current('rooms.*')">Rooms</NavLink>
+                            <NavLink v-if="can('category-list')" :href="route('categories.index')" :active="route().current('categories.*')">Categories</NavLink>
+                            <NavLink v-if="can('sub_category-list')" :href="route('subcategories.index')" :active="route().current('subcategories.*')">Subcategories</NavLink>
+                        </div>
+
+                         <!-- Organization -->
+                         <div class="pt-4">
+                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Organization</p>
+                            <NavLink v-if="can('department-list')" :href="route('departments.index')" :active="route().current('departments.index')">Departments</NavLink>
+                            <NavLink v-if="can('feature-toggle')" :href="route('departments.features')" :active="route().current('departments.features')">Features</NavLink>
+                        </div>
+
+                        <!-- Access Control -->
+                         <div class="pt-4">
+                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Access Control</p>
+                             <NavLink v-if="can('user-list')" :href="route('users.index')" :active="route().current('users.*')">Users</NavLink>
+                             <NavLink v-if="can('role-list')" :href="route('roles.index')" :active="route().current('roles.*')">Roles</NavLink>
+                             <NavLink v-if="can('permission-list')" :href="route('permissions.index')" :active="route().current('permissions.*')">Permissions</NavLink>
+                        </div>
+
+                        <!-- Media (Only for Media Role or permissions) -->
+                        <div v-if="hasRole('Media') || can('news-list') || can('media-settings-manage')" class="pt-4">
+                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Media</p>
+                            <NavLink v-if="can('news-list')" :href="route('media.news.index')" :active="route().current('media.news.*')">News</NavLink>
+                            <NavLink v-if="can('media-settings-manage')" :href="route('media.settings.edit')" :active="route().current('media.settings.*')">Settings</NavLink>
+                        </div>
                     </nav>
                 </div>
 
-                <header v-if="$slots.header" class="bg-white shadow">
-                    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                        <slot name="header" />
-                    </div>
-                </header>
 
-                <main>
-                    <slot />
+                <!-- Page Content -->
+                <main class="flex-1 overflow-y-auto bg-gray-50 focus:outline-none">
+                    <div class="py-6">
+                        <div v-if="$slots.header" class="w-full px-4 sm:px-6 lg:px-10 mb-8">
+                            <h1 class="text-3xl font-extrabold tracking-tight text-gray-900">
+                                <slot name="header" />
+                            </h1>
+                        </div>
+                        <div class="w-full px-4 sm:px-6 lg:px-10">
+                             <slot />
+                        </div>
+                    </div>
                 </main>
             </div>
         </div>

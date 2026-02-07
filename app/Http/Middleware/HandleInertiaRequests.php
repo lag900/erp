@@ -34,10 +34,14 @@ class HandleInertiaRequests extends Middleware
         $permissions = [];
 
         if ($request->user()) {
-            $permissions = $request->user()
-                ->getAllPermissions()
-                ->pluck('name')
-                ->values();
+            if ($request->user()->hasRole('SuperAdmin')) {
+                $permissions = \Spatie\Permission\Models\Permission::pluck('name')->values();
+            } else {
+                $permissions = $request->user()
+                    ->getAllPermissions()
+                    ->pluck('name')
+                    ->values();
+            }
 
             $featureKeys = [];
             $selectedDepartmentId = $request->session()->get('selected_department_id');
@@ -69,8 +73,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'permissions' => $permissions,
+                'roles' => $request->user() ? $request->user()->getRoleNames() : [],
             ],
-            'department' => $departmentPayload,
+            'departmentContext' => $departmentPayload,
         ];
     }
 }

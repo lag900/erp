@@ -11,8 +11,10 @@ use Inertia\Response;
 
 class CategoriesController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $departmentId = $request->session()->get('selected_department_id');
+
         $categories = Category::query()
             ->orderBy('name')
             ->get()

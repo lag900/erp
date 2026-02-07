@@ -16,11 +16,45 @@ const props = defineProps({
     },
 });
 
-const page = usePage();
-const permissions = computed(() => page.props.auth?.permissions ?? []);
-const can = (permission) => permissions.value.includes(permission);
+const getStatusBadgeClass = (condition) => {
+    switch (condition) {
+        case 'active':
+            return 'bg-green-100 text-green-700 border-green-200';
+        case 'maintenance':
+            return 'bg-amber-100 text-amber-700 border-amber-200';
+        case 'damaged':
+            return 'bg-red-100 text-red-700 border-red-200';
+        case 'disposed':
+            return 'bg-gray-100 text-gray-700 border-gray-200';
+        default:
+            return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+};
 
-const form = useForm({});
+const getStatusLabel = (condition) => {
+    switch (condition) {
+        case 'active':
+            return 'Active / Good';
+        case 'maintenance':
+            return 'In Maintenance';
+        case 'damaged':
+            return 'Damaged';
+        case 'disposed':
+            return 'Disposed';
+        default:
+            return condition || 'Unknown';
+    }
+};
+
+const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
 </script>
 
 <template>
@@ -28,192 +62,203 @@ const form = useForm({});
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Asset Details
-                </h2>
-                <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <Link
+                        :href="route('assets.index')"
+                        class="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition-all hover:bg-gray-50 hover:text-primary active:scale-95 shadow-soft"
+                    >
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </Link>
+                    <div>
+                        <h2 class="text-2xl font-bold leading-tight text-gray-800">
+                            Asset #{{ asset.id }}
+                        </h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span :class="['inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-black uppercase tracking-tighter shadow-sm', getStatusBadgeClass(asset.condition)]">
+                                {{ getStatusLabel(asset.condition) }}
+                            </span>
+                            <span v-if="asset.is_shared" class="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-black uppercase tracking-tighter text-blue-600 shadow-sm">
+                                SHARED RESOURCE
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3">
                     <Link
                         v-if="can('asset-edit')"
                         :href="route('assets.edit', asset.id)"
-                        class="rounded border border-indigo-600 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
+                        class="inline-flex items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft transition-all hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
                     >
-                        Edit Asset
-                    </Link>
-                    <Link
-                        :href="route('assets.index')"
-                        class="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                        Back to Assets
+                        <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 00-2 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        Edit Asset Data
                     </Link>
                 </div>
             </div>
         </template>
 
-        <div class="py-6">
-            <div class="mx-auto max-w-5xl space-y-6 sm:px-6 lg:px-8">
-                <div class="rounded bg-white p-6 shadow">
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <p class="text-sm text-gray-500">Location</p>
-                            <p class="text-lg font-semibold text-gray-900">
-                                {{ asset.room?.location ?? 'N/A' }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{
-                                    [
-                                        asset.room?.building,
-                                        asset.room?.level,
-                                        asset.room?.name,
-                                        asset.room?.code,
-                                    ]
-                                        .filter(Boolean)
-                                        .join(' - ')
-                                }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Category</p>
-                            <p class="text-lg font-semibold text-gray-900">
-                                {{ asset.category ?? '-' }}
-                            </p>
-                            <p class="text-sm text-gray-600">
-                                {{ asset.subCategory ?? '-' }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">Count</p>
-                            <p class="text-lg font-semibold text-gray-900">
-                                {{ asset.count ?? 1 }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <p class="text-sm text-gray-500">Note</p>
-                        <p class="text-gray-700">
-                            {{ asset.note ?? 'No notes provided.' }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="rounded bg-white p-6 shadow">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-gray-800">
-                            Asset Information
-                        </h3>
-                        <PrimaryButton
-                            v-if="can('asset-edit')"
-                            type="button"
-                            @click="$inertia.visit(route('assets.edit', asset.id))"
-                        >
-                            Update Info
-                        </PrimaryButton>
-                    </div>
-
-                    <div v-if="asset.infos.length === 0" class="mt-4 text-gray-600">
-                        No additional information.
-                    </div>
-                    <div v-else class="mt-4 space-y-3">
-                        <div
-                            v-for="info in asset.infos"
-                            :key="info.id"
-                            class="rounded border border-gray-200 p-4"
-                        >
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <div>
-                                    <p class="text-sm text-gray-500">Key</p>
-                                    <p class="text-gray-900">{{ info.key }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500">Value</p>
-                                    <p class="text-gray-700">{{ info.value ?? '-' }}</p>
+        <div class="py-10">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                    
+                    <!-- Left Column: Core Info -->
+                    <div class="lg:col-span-2 space-y-8">
+                        
+                        <!-- Primary Statistics/ID -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-premium">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Serial Number</span>
+                                <div class="mt-2 flex items-center justify-between">
+                                    <span class="text-lg font-black text-gray-900 line-clamp-1">{{ asset.serial_number || 'UNASSIGNED' }}</span>
                                 </div>
                             </div>
-                            <div v-if="info.image_url" class="mt-3">
-                                <p class="mb-2 text-sm text-gray-500">Image</p>
-                                <img
-                                    :src="info.image_url"
-                                    :alt="info.key"
-                                    class="h-32 w-32 rounded border border-gray-300 object-cover"
-                                />
+                            <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-premium">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Classification</span>
+                                <div class="mt-2 text-lg font-black text-primary line-clamp-1">{{ asset.subCategory }}</div>
+                            </div>
+                            <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-premium">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-gray-400">Quantity</span>
+                                <div class="mt-2 text-3xl font-black text-gray-900">{{ asset.count || 1 }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Technical Specs -->
+                        <div class="rounded-2xl border border-gray-100 bg-white shadow-premium overflow-hidden">
+                            <div class="border-b border-gray-50 bg-gray-50/50 px-6 py-4">
+                                <h3 class="text-sm font-black uppercase tracking-widest text-gray-900">Technical Specifications</h3>
+                            </div>
+                            <div v-if="asset.infos.length === 0" class="p-10 text-center">
+                                <p class="text-sm text-gray-400 italic">No technical specifications provided for this asset.</p>
+                            </div>
+                            <div v-else class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div v-for="info in asset.infos" :key="info.id" class="flex flex-col rounded-xl border border-gray-100 p-4 transition-all hover:border-primary/20 hover:bg-primary/5 group">
+                                        <span class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 group-hover:text-primary/70 transition-colors">{{ info.key }}</span>
+                                        <span class="mt-1 text-base font-bold text-gray-900">{{ info.value || '-' }}</span>
+                                        <div v-if="info.image_url" class="mt-4 overflow-hidden rounded-lg shadow-soft border border-gray-100">
+                                            <img :src="info.image_url" class="h-40 w-full object-cover transition-transform group-hover:scale-105" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Movement Timeline -->
+                        <div class="rounded-2xl border border-gray-100 bg-white shadow-premium overflow-hidden">
+                            <div class="border-b border-gray-50 bg-gray-50/50 px-6 py-4">
+                                <h3 class="text-sm font-black uppercase tracking-widest text-gray-900">Audit Trail & Movements</h3>
+                            </div>
+                            <div v-if="asset.movements.length === 0" class="p-10 text-center">
+                                <p class="text-sm text-gray-400 italic">This asset is currently in its original deployment location.</p>
+                            </div>
+                            <div v-else class="p-8">
+                                <div class="flow-root">
+                                    <ul role="list" class="-mb-8">
+                                        <li v-for="(movement, idx) in asset.movements" :key="movement.id">
+                                            <div class="relative pb-8">
+                                                <span v-if="idx !== asset.movements.length - 1" class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-100" aria-hidden="true"></span>
+                                                <div class="relative flex space-x-3">
+                                                    <div>
+                                                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 ring-8 ring-white">
+                                                            <svg class="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                        </span>
+                                                    </div>
+                                                    <div class="min-w-0 flex-1 pt-0.5">
+                                                        <div class="text-sm text-gray-500">
+                                                            <span class="font-bold text-gray-900 uppercase text-xs">{{ movement.user?.name }}</span> 
+                                                            moved this asset from 
+                                                            <span class="font-bold text-primary">{{ movement.from_room?.name }}</span>
+                                                            to 
+                                                            <span class="font-bold text-primary">{{ movement.to_room?.name }}</span>
+                                                            <span class="whitespace-nowrap ml-2 text-gray-400">{{ formatDate(movement.created_at) }}</span>
+                                                        </div>
+                                                        <p v-if="movement.reason" class="mt-1 text-sm italic text-gray-400">{{ movement.reason }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="rounded bg-white p-6 shadow">
-                    <h3 class="mb-4 text-lg font-semibold text-gray-800">
-                        Room Assets Summary
-                    </h3>
-                    <p class="mb-4 text-sm text-gray-600">
-                        Summary of assets by subcategory in
-                        <span class="font-medium">{{ asset.room?.name }}</span>
-                    </p>
-                    <div v-if="roomAssetsSummary.length === 0" class="text-gray-500">
-                        No other assets in this room.
-                    </div>
-                    <div v-else class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-700">
-                                        Category
-                                    </th>
-                                    <th class="px-4 py-3 text-left font-medium text-gray-700">
-                                        Subcategory
-                                    </th>
-                                    <th class="px-4 py-3 text-center font-medium text-gray-700">
-                                        Asset Records
-                                    </th>
-                                    <th class="px-4 py-3 text-center font-medium text-gray-700">
-                                        Total Count
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white">
-                                <tr
-                                    v-for="summary in roomAssetsSummary"
-                                    :key="summary.subcategory_id"
-                                    class="hover:bg-gray-50"
+                    <!-- Right Column: Sidebar Meta -->
+                    <div class="space-y-8">
+                        
+                        <!-- Deployment Location Card -->
+                        <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-premium">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Current Placement</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-start gap-4 p-4 rounded-xl border border-gray-50 bg-gray-50/30">
+                                     <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white text-primary shadow-sm">
+                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                     </div>
+                                     <div>
+                                        <p class="text-[10px] font-black uppercase tracking-tighter text-gray-400">Exact Room</p>
+                                        <p class="font-bold text-gray-900">{{ asset.room?.name }}</p>
+                                        <p class="text-xs text-gray-500 uppercase font-black tracking-tighter">{{ asset.room?.code }}</p>
+                                     </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="p-3 rounded-xl border border-gray-50 bg-gray-50/30">
+                                        <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400">Campus</p>
+                                        <p class="text-sm font-bold text-gray-900">{{ asset.room?.location || 'Main' }}</p>
+                                    </div>
+                                    <div class="p-3 rounded-xl border border-gray-50 bg-gray-50/30">
+                                        <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400">Building</p>
+                                        <p class="text-sm font-bold text-gray-900 truncate" :title="asset.room?.building">{{ asset.room?.building }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ownership & Visibility -->
+                        <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-premium">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Ownership & Visibility</h3>
+                            <div class="space-y-6">
+                                <div>
+                                    <p class="text-[10px] font-black uppercase tracking-tighter text-gray-400">Managing Department</p>
+                                    <div class="mt-2 flex items-center gap-3">
+                                        <div class="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                            {{ asset.owner_department?.charAt(0) }}
+                                        </div>
+                                        <span class="font-bold text-gray-900">{{ asset.owner_department }}</span>
+                                    </div>
+                                </div>
+
+                                <div v-if="asset.is_shared" class="pt-4 border-t border-gray-50">
+                                    <p class="text-[10px] font-black uppercase tracking-tighter text-gray-400">Also Visible To</p>
+                                    <div class="mt-3 flex flex-wrap gap-2">
+                                        <span v-for="dept in asset.shared_departments" :key="dept" class="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-black uppercase tracking-tighter text-gray-600">
+                                            {{ dept }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Note -->
+                        <div v-if="asset.note" class="rounded-2xl border-2 border-dashed border-gray-100 bg-gray-50/30 p-6">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Internal Note</h3>
+                            <p class="text-sm text-gray-600 italic leading-relaxed">{{ asset.note }}</p>
+                        </div>
+
+                        <!-- Danger Zone -->
+                        <div v-if="can('asset-delete')" class="pt-6">
+                             <form @submit.prevent="form.delete(route('assets.destroy', asset.id))">
+                                <button
+                                    type="submit"
+                                    class="w-full rounded-xl border border-red-100 bg-red-50 py-3 text-xs font-black uppercase tracking-widest text-red-600 transition-all hover:bg-red-600 hover:text-white"
+                                    :disabled="form.processing"
+                                    onclick="return confirm('Are you sure you want to permanently delete this asset record? This action cannot be undone.')"
                                 >
-                                    <td class="px-4 py-3 text-gray-700">
-                                        {{ summary.category_name }}
-                                    </td>
-                                    <td class="px-4 py-3 font-medium text-gray-900">
-                                        {{ summary.subcategory_name }}
-                                    </td>
-                                    <td class="px-4 py-3 text-center text-gray-600">
-                                        {{ summary.asset_count }}
-                                    </td>
-                                    <td class="px-4 py-3 text-center font-semibold text-indigo-600">
-                                        {{ summary.total_count }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="rounded bg-white p-6 shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">Danger zone</p>
-                            <p class="text-gray-700">Delete this asset permanently.</p>
+                                    Terminate Record
+                                </button>
+                             </form>
                         </div>
-                        <form
-                            v-if="can('asset-delete')"
-                            @submit.prevent="
-                                form.delete(route('assets.destroy', asset.id))
-                            "
-                        >
-                            <DangerButton
-                                type="submit"
-                                :disabled="form.processing"
-                            >
-                                Delete Asset
-                            </DangerButton>
-                        </form>
+
                     </div>
                 </div>
             </div>

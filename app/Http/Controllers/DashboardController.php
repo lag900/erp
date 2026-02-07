@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\Level;
 use App\Models\Location;
+use App\Models\News;
 use App\Models\Room;
 use App\Models\SubCategory;
 use Illuminate\Http\Request;
@@ -22,25 +23,60 @@ class DashboardController extends Controller
 
         $department = $departmentId ? Department::find($departmentId) : null;
 
+        // Base query for department assets
+        $assetsQuery = Asset::query();
+
+        // 1. Asset Statistics
+        $totalAssets = $departmentId ? $assetsQuery->sum('count') : 0;
+        $totalValue = 0; // Placeholder if value field existed
+
+        // 2. Assets by Category
+        $assetsByCategory = [];
+        if ($departmentId) {
+            $assetsByCategory = Category::select('categories.name')
+                ->join('sub_categories', 'categories.id', '=', 'sub_categories.category_id')
+                ->join('assets', 'sub_categories.id', '=', 'assets.sub_category_id')
+                ->selectRaw('categories.name, SUM(assets.count) as total')
+                ->groupBy('categories.id', 'categories.name')
+                ->get();
+        }
+
+        // 3. Recent Activity (Last 5 Updates/Additions)
+        $recentActivity = [];
+        if ($departmentId) {
+            $recentActivity = Asset::with(['subCategory.category', 'room.level.building.location'])
+                ->latest('updated_at')
+                ->take(5)
+                ->get()
+                ->map(function ($asset) {
+                    return [
+                        'id' => $asset->id,
+                        'name' => $asset->subCategory?->name ?? 'Unknown Asset',
+                        'category' => $asset->subCategory?->category?->name ?? 'Uncategorized',
+                        'location' => $asset->room?->level?->building?->name . ' - ' . $asset->room?->name,
+                        'updated_at' => $asset->updated_at->diffForHumans(),
+                        'status' => 'Active', // Placeholder
+                    ];
+                });
+        }
+
+        // 4. Counts
         $stats = [
-            'assets' => $departmentId
-                ? Asset::where('department_id', $departmentId)->count()
-                : Asset::count(),
+            'assets' => $totalAssets,
             'locations' => Location::count(),
             'buildings' => Building::count(),
-            'levels' => Level::count(),
             'rooms' => Room::count(),
-            'categories' => Category::count(),
-            'subCategories' => SubCategory::count(),
-            'departments' => Department::count(),
-            'users' => $request->user()->can('user-list') 
-                ? \App\Models\User::count() 
+            'users' => $departmentId
+                ? \App\Models\User::whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId))->count()
                 : 0,
+            'news' => News::count(),
         ];
 
         return Inertia::render('Dashboard', [
             'department' => $department,
             'stats' => $stats,
+            'assetsByCategory' => $assetsByCategory,
+            'recentActivity' => $recentActivity,
             'hasDepartmentSelected' => (bool) $departmentId,
         ]);
     }

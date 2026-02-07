@@ -29,6 +29,19 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+        \Illuminate\Support\Facades\Log::info('Login attempt for: ' . $request->email);
+        $user = \App\Models\User::where('email', $request->email)->first();
+        if (!$user) {
+            \Illuminate\Support\Facades\Log::warning('User not found: ' . $request->email);
+        } else {
+            \Illuminate\Support\Facades\Log::info('User found in DB. ID: ' . $user->id);
+            if (\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+                \Illuminate\Support\Facades\Log::info('Password check passed in controller.');
+            } else {
+                \Illuminate\Support\Facades\Log::warning('Password check failed in controller.');
+            }
+        }
+        
         $request->authenticate();
 
         $request->session()->regenerate();

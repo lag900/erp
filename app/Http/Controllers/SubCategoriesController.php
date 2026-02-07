@@ -12,8 +12,10 @@ use Inertia\Response;
 
 class SubCategoriesController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $departmentId = $request->session()->get('selected_department_id');
+
         $subCategories = SubCategory::with('category')
             ->orderBy('name')
             ->get()

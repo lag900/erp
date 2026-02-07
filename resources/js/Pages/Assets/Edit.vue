@@ -6,7 +6,6 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
-import DangerButton from '@/Components/DangerButton.vue';
 
 const props = defineProps({
     asset: {
@@ -21,6 +20,10 @@ const props = defineProps({
         type: Array,
         required: true,
     },
+    departments: {
+        type: Array,
+        required: true,
+    },
 });
 
 const page = usePage();
@@ -31,7 +34,10 @@ const form = useForm({
     room_id: props.asset.room_id,
     sub_category_id: props.asset.sub_category_id,
     note: props.asset.note ?? '',
-    count: props.asset.count ?? 1,
+    serial_number: props.asset.serial_number ?? '',
+    condition: props.asset.condition ?? 'active',
+    is_shared: !!props.asset.is_shared,
+    shared_department_ids: props.asset.shared_departments_ids ?? [],
     infos: props.asset.infos?.length
         ? props.asset.infos.map((info) => ({
               id: info.id,
@@ -63,7 +69,7 @@ const getImagePreview = (image, imageUrl) => {
 
 const removeInfoRow = (index) => {
     if (form.infos.length === 1) {
-        form.infos[0] = { key: '', value: '', image: '' };
+        form.infos[0] = { key: '', value: '', image: null, image_url: null };
         return;
     }
     form.infos.splice(index, 1);
@@ -75,208 +81,170 @@ const removeInfoRow = (index) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                    Edit Asset
-                </h2>
-                <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
                     <Link
                         :href="route('assets.show', asset.id)"
-                        class="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        class="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition-all hover:bg-gray-50 hover:text-primary active:scale-95 shadow-soft"
                     >
-                        Back to Details
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                     </Link>
-                    <Link
-                        :href="route('assets.index')"
-                        class="rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                        Back to Assets
-                    </Link>
+                    <div>
+                        <h2 class="text-2xl font-bold leading-tight text-gray-800">
+                            Modify Asset Record
+                        </h2>
+                        <p class="mt-1 text-sm text-gray-500">Updating metadata for <span class="font-bold text-gray-700">#{{ asset.serial_number || asset.id }}</span></p>
+                    </div>
                 </div>
             </div>
         </template>
 
-        <div class="py-6">
-            <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
+        <div class="py-10">
+            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
                 <form
-                    class="rounded bg-white p-6 shadow"
                     @submit.prevent="
                         form.post(route('assets.update', asset.id), {
-                            method: 'put',
+                            _method: 'put',
                             forceFormData: true,
                         })
                     "
+                    class="space-y-8"
                 >
-                    <div class="grid gap-6 sm:grid-cols-2">
-                        <div>
-                            <InputLabel for="room_id" value="Room" />
-                            <select
-                                id="room_id"
-                                v-model="form.room_id"
-                                class="mt-1 block w-full rounded border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                            >
-                                <option value="" disabled>Select room</option>
-                                <option
-                                    v-for="room in rooms"
-                                    :key="room.id"
-                                    :value="room.id"
-                                >
-                                    {{ room.label }}
-                                </option>
-                            </select>
-                            <InputError class="mt-2" :message="form.errors.room_id" />
+                    <!-- Card: Core Logistics -->
+                    <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-premium">
+                        <div class="border-b border-gray-50 bg-gray-50/50 px-6 py-4">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-900">Deployment & Identity</h3>
                         </div>
-
-                        <div>
-                            <InputLabel for="sub_category_id" value="Subcategory" />
-                            <select
-                                id="sub_category_id"
-                                v-model="form.sub_category_id"
-                                class="mt-1 block w-full rounded border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                            >
-                                <option value="" disabled>Select subcategory</option>
-                                <option
-                                    v-for="subCategory in subCategories"
-                                    :key="subCategory.id"
-                                    :value="subCategory.id"
-                                >
-                                    {{ subCategory.label }}
-                                </option>
-                            </select>
-                            <InputError
-                                class="mt-2"
-                                :message="form.errors.sub_category_id"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="mt-6 grid gap-6 sm:grid-cols-2">
-                        <div>
-                            <InputLabel for="count" value="Count" />
-                            <TextInput
-                                id="count"
-                                v-model.number="form.count"
-                                type="number"
-                                min="1"
-                                class="mt-1 block w-full"
-                                placeholder="Number of items"
-                            />
-                            <InputError class="mt-2" :message="form.errors.count" />
-                        </div>
-
-                        <div>
-                            <InputLabel for="note" value="Note" />
-                            <textarea
-                                id="note"
-                                v-model="form.note"
-                                rows="3"
-                                class="mt-1 block w-full rounded border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                placeholder="Additional notes"
-                            />
-                            <InputError class="mt-2" :message="form.errors.note" />
-                        </div>
-                    </div>
-
-                    <div class="mt-8">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-gray-800">
-                                Asset Information
-                            </h3>
-                            <button
-                                type="button"
-                                class="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                                :disabled="!canAddMoreInfo"
-                                @click="addInfoRow"
-                            >
-                                Add Row
-                            </button>
-                        </div>
-
-                        <div class="mt-4 space-y-4">
-                            <div
-                                v-for="(info, index) in form.infos"
-                                :key="info.id ?? index"
-                                class="rounded border border-gray-200 p-4"
-                            >
-                                <div class="grid gap-4 sm:grid-cols-3">
-                                    <div>
-                                        <InputLabel
-                                            :for="`info-key-${index}`"
-                                            value="Key"
-                                        />
-                                        <TextInput
-                                            :id="`info-key-${index}`"
-                                            v-model="info.key"
-                                            class="mt-1 block w-full"
-                                            placeholder="e.g. ip"
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel
-                                            :for="`info-value-${index}`"
-                                            value="Value"
-                                        />
-                                        <TextInput
-                                            :id="`info-value-${index}`"
-                                            v-model="info.value"
-                                            class="mt-1 block w-full"
-                                            placeholder="e.g. 192.168.1.10"
-                                        />
-                                    </div>
-                                    <div>
-                                        <InputLabel
-                                            :for="`info-image-${index}`"
-                                            value="Image (optional)"
-                                        />
-                                        <div v-if="getImagePreview(info.image, info.image_url)" class="mb-2">
-                                            <img
-                                                :src="getImagePreview(info.image, info.image_url)"
-                                                alt="Preview"
-                                                class="h-24 w-24 rounded border border-gray-300 object-cover"
-                                            />
-                                        </div>
-                                        <input
-                                            :id="`info-image-${index}`"
-                                            type="file"
-                                            accept="image/*"
-                                            class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                            @input="info.image = $event.target.files[0]"
-                                        />
-                                        <InputError class="mt-2" :message="form.errors[`infos.${index}.image`]" />
-                                        <p class="mt-1 text-xs text-gray-500">
-                                            Accepted formats: JPEG, PNG, JPG, GIF, SVG. Max size: 2MB
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="mt-3 flex justify-end">
-                                    <button
-                                        type="button"
-                                        class="text-xs text-red-600 hover:text-red-700"
-                                        @click="removeInfoRow(index)"
+                        <div class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <InputLabel for="room_id" value="Assigned Room" />
+                                    <select
+                                        id="room_id"
+                                        v-model="form.room_id"
+                                        class="mt-1 block w-full rounded-xl border-gray-200 bg-white py-3 pl-4 pr-10 text-sm shadow-soft focus:border-primary focus:ring-primary transition-all"
                                     >
-                                        Remove
-                                    </button>
+                                        <option value="" disabled>Select Room</option>
+                                        <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.label }}</option>
+                                    </select>
+                                    <InputError class="mt-2" :message="form.errors.room_id" />
+                                </div>
+
+                                <div>
+                                    <InputLabel for="sub_category_id" value="Asset Type" />
+                                    <select
+                                        id="sub_category_id"
+                                        v-model="form.sub_category_id"
+                                        class="mt-1 block w-full rounded-xl border-gray-200 bg-white py-3 pl-4 pr-10 text-sm shadow-soft focus:border-primary focus:ring-primary transition-all"
+                                    >
+                                        <option value="" disabled>Select Type</option>
+                                        <option v-for="cat in subCategories" :key="cat.id" :value="cat.id">{{ cat.label }}</option>
+                                    </select>
+                                    <InputError class="mt-2" :message="form.errors.sub_category_id" />
+                                </div>
+
+                                <div>
+                                    <InputLabel for="serial_number" value="Serial Number" />
+                                    <TextInput
+                                        id="serial_number"
+                                        v-model="form.serial_number"
+                                        type="text"
+                                        class="mt-1 block w-full border-gray-200 h-11"
+                                        placeholder="e.g. SN-8829-X"
+                                    />
+                                    <InputError class="mt-2" :message="form.errors.serial_number" />
+                                </div>
+
+                                <div>
+                                    <InputLabel for="condition" value="Current Condition" />
+                                    <select
+                                        id="condition"
+                                        v-model="form.condition"
+                                        class="mt-1 block w-full rounded-xl border-gray-200 bg-white py-3 pl-4 pr-10 text-sm shadow-soft focus:border-primary focus:ring-primary transition-all"
+                                    >
+                                        <option value="active">Active / Optimal</option>
+                                        <option value="maintenance">Maintenance Required</option>
+                                        <option value="damaged">Damaged / Non-functional</option>
+                                        <option value="disposed">Disposed / Retired</option>
+                                    </select>
+                                    <InputError class="mt-2" :message="form.errors.condition" />
                                 </div>
                             </div>
                         </div>
-
-                        <InputError class="mt-2" :message="form.errors['infos.*.key']" />
                     </div>
 
-                    <div class="mt-8 flex items-center justify-between gap-3">
-                        <DangerButton
-                            v-if="can('asset-delete')"
-                            type="button"
-                            @click="$inertia.delete(route('assets.destroy', asset.id))"
-                        >
-                            Delete Asset
-                        </DangerButton>
-                        <PrimaryButton
-                            v-if="can('asset-edit')"
-                            :disabled="form.processing"
-                        >
-                            Save Changes
-                        </PrimaryButton>
+                    <!-- Card: Ownership & Sharing -->
+                    <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-premium">
+                        <div class="border-b border-gray-50 bg-gray-50/50 px-6 py-4">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-900">Governance & Sharing</h3>
+                        </div>
+                        <div class="p-8 space-y-6">
+                            <div class="flex items-center gap-4">
+                                <label class="relative inline-flex cursor-pointer items-center">
+                                    <input type="checkbox" v-model="form.is_shared" class="peer sr-only" />
+                                    <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:top-[2px] after:left-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:border-white shadow-inner"></div>
+                                    <span class="ml-4 text-sm font-bold text-gray-900 tracking-tight">Enable Multi-Department Visibility</span>
+                                </label>
+                            </div>
+
+                            <div v-if="form.is_shared" class="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
+                                <template v-for="dept in departments" :key="dept.id">
+                                    <div class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/30 transition-all hover:bg-white hover:shadow-soft">
+                                        <input
+                                            :id="`dept-edit-${dept.id}`"
+                                            type="checkbox"
+                                            v-model="form.shared_department_ids"
+                                            :value="dept.id"
+                                            class="h-4 w-4 rounded border-gray-200 text-primary focus:ring-primary"
+                                        />
+                                        <label :for="`dept-edit-${dept.id}`" class="text-xs font-bold text-gray-600 cursor-pointer uppercase tracking-tighter">{{ dept.name }}</label>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card: Technical Specifications -->
+                    <div class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-premium">
+                        <div class="flex items-center justify-between border-b border-gray-50 bg-gray-50/50 px-6 py-4">
+                            <h3 class="text-xs font-black uppercase tracking-widest text-gray-900">Technical Specifications</h3>
+                            <button type="button" @click="addInfoRow" class="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary-hover transition-all">Append Specification</button>
+                        </div>
+                        <div class="p-8 space-y-6">
+                            <div v-for="(info, index) in form.infos" :key="index" class="relative rounded-2xl border border-gray-100 p-6 group transition-all hover:bg-gray-50/30">
+                                <button type="button" @click="removeInfoRow(index)" class="absolute top-4 right-4 h-8 w-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <InputLabel value="Specification Key" class="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-2" />
+                                        <TextInput v-model="info.key" class="w-full border-gray-200 h-10 text-sm" placeholder="e.g. Model, CPU..." />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Specification Value" class="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-2" />
+                                        <TextInput v-model="info.value" class="w-full border-gray-200 h-10 text-sm" placeholder="e.g. Core i9, Dell XPS..." />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Reference Image" class="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-2" />
+                                        <div class="flex items-center gap-4">
+                                            <div v-if="getImagePreview(info.image, info.image_url)" class="h-10 w-10 flex-shrink-0 rounded-lg overflow-hidden border border-gray-200 bg-white">
+                                                <img :src="getImagePreview(info.image, info.image_url)" class="h-full w-full object-cover" />
+                                            </div>
+                                            <input type="file" @input="info.image = $event.target.files[0]" class="text-[10px] text-gray-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-gray-100 file:text-gray-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pb-10">
+                        <p class="text-xs text-gray-400 italic font-medium tracking-tight">System will log this update under your administrator ID for the audit trail.</p>
+                        <div class="flex gap-4">
+                            <Link :href="route('assets.show', asset.id)" class="px-6 py-3 text-sm font-bold text-gray-500 hover:text-gray-700 transition-all uppercase tracking-widest">Cancel</Link>
+                            <PrimaryButton :disabled="form.processing" class="shadow-soft px-8 py-3 rounded-xl transition-all active:scale-95">Commit All Changes</PrimaryButton>
+                        </div>
                     </div>
                 </form>
             </div>

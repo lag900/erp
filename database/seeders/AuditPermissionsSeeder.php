@@ -14,6 +14,12 @@ class AuditPermissionsSeeder extends Seeder
     public function run(): void
     {
         $permissions = [
+            'governance.view',
+            'governance.manage',
+            'audit.view',
+            'audit.full',
+            'security.alerts.view',
+            'security.alerts.manage',
             'view-audit-logs',
             'manage-audit-logs',
         ];

@@ -109,33 +109,67 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // --- PRODUCTION AUTO-PROVISIONING ---
-        // Automatically creates a SuperAdmin account if none exists.
-        // This runs only in non-console production environments for first-boot safety.
-        if (!app()->runningInConsole()) {
-            Cache::remember('superadmin_provisioned', 3600, function () {
+        // Automatically creates SuperAdmin role, permissions and account if missing.
+        if (!app()->runningInConsole() || app()->runningUnitTests()) {
+            Cache::remember('rbac_provisioned', 3600, function () {
                 try {
-                    if (Schema::hasTable('users')) {
-                        $exists = User::role('SuperAdmin')->exists() || User::where('email', '1@1.com')->exists();
-                        
-                        if (!$exists) {
-                            $user = User::create([
-                                'name' => 'System Owner',
-                                'email' => '1@1.com',
-                                'password' => Hash::make('1@1.com'),
-                                'email_verified_at' => now(),
-                                'role' => 'SuperAdmin',
-                                'is_active' => true,
-                            ]);
+                    if (Schema::hasTable('roles') && Schema::hasTable('permissions')) {
+                        // 1. Ensure SuperAdmin Role exists
+                        $superAdminRole = Role::firstOrCreate(['name' => 'SuperAdmin', 'guard_name' => 'web']);
 
-                            $role = Role::where('name', 'SuperAdmin')->first();
-                            if ($role) {
-                                $user->assignRole($role);
+                        // 2. Ensure Governance Permission Group exists
+                        $govGroup = \App\Models\PermissionGroup::firstOrCreate(
+                            ['name' => 'Governance'],
+                            ['description' => 'System Governance and Audit Monitoring', 'icon' => 'shield-check', 'sort_order' => 100]
+                        );
+
+                        // 3. Define Enterprise Governance Permissions
+                        $govPermissions = [
+                            'governance.view' => ['label' => 'System Governance', 'route' => 'dashboard', 'icon' => 'cog'],
+                            'governance.manage' => ['label' => 'Manage Governance', 'route' => 'dashboard', 'icon' => 'adjustments'],
+                            'audit.view' => ['label' => 'Audit Trail', 'route' => 'audit.index', 'icon' => 'eye'],
+                            'audit.full' => ['label' => 'System Audit Full', 'route' => 'audit.index', 'icon' => 'collection'],
+                            'security.alerts.view' => ['label' => 'Security Center', 'route' => 'audit.alerts', 'icon' => 'shield-exclamation'],
+                            'security.alerts.manage' => ['label' => 'Security Management', 'route' => 'audit.alerts', 'icon' => 'lock-closed'],
+                        ];
+
+                        foreach ($govPermissions as $pName => $pData) {
+                            \App\Models\Permission::firstOrCreate(
+                                ['name' => $pName, 'guard_name' => 'web'],
+                                [
+                                    'permission_group_id' => $govGroup->id,
+                                    'sidebar_label' => $pData['label'],
+                                    'route_name' => $pData['route'],
+                                    'icon' => $pData['icon'],
+                                    'is_sidebar_item' => str_ends_with($pName, '.view'),
+                                    'sort_order' => 10,
+                                ]
+                            );
+                        }
+
+                        // 4. Sync All to SuperAdmin
+                        $superAdminRole->givePermissionTo(array_keys($govPermissions));
+
+                        // 5. Ensure System Owner account exists
+                        if (Schema::hasTable('users')) {
+                            $user = User::where('email', '1@1.com')->first();
+                            if (!$user) {
+                                $user = User::create([
+                                    'name' => 'System Owner',
+                                    'email' => '1@1.com',
+                                    'password' => Hash::make('1@1.com'),
+                                    'email_verified_at' => now(),
+                                    'role' => 'SuperAdmin',
+                                    'is_active' => true,
+                                ]);
                             }
+                            $user->assignRole($superAdminRole);
                         }
                     }
                     return true;
                 } catch (\Exception $e) {
-                    return false; // Table might not exist yet during migration
+                    \Illuminate\Support\Facades\Log::error('RBAC Provisioning failed: ' . $e->getMessage());
+                    return false;
                 }
             });
         }

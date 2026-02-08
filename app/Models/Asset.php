@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\Auditable;
 
 /**
  * @property int $id
  */
 class Asset extends Model
 {
-    use HasFactory, SoftDeletes, \App\Traits\BelongsToDepartment, \App\Traits\LogsActivity;
+    use HasFactory, SoftDeletes, Auditable, \App\Traits\BelongsToDepartment, \App\Traits\LogsActivity;
 
     protected $fillable = [
         'department_id', // Owner Department
@@ -174,7 +175,7 @@ class Asset extends Model
 
     public function activityLogs()
     {
-        return $this->morphMany(ActivityLog::class, 'subject');
+        return $this->morphMany(AuditLog::class, 'auditable');
     }
 
     public function subCategory(): BelongsTo

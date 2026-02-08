@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\SecurityHeadersMiddleware::class,
             \App\Http\Middleware\CompressResponse::class, // Gzip compression for production
+            \App\Http\Middleware\AuditRequestMiddleware::class,
         ]);
 
         $middleware->alias([

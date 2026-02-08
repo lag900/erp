@@ -69,15 +69,12 @@ class AssetObserver
 
     private function logActivity($action, $description, $asset, $properties = [])
     {
-        \App\Models\ActivityLog::create([
-            'user_id' => \Illuminate\Support\Facades\Auth::id(),
-            'action' => $action,
-            'description' => $description,
-            'subject_type' => get_class($asset),
-            'subject_id' => $asset->id,
-            'properties' => $properties,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
+        app(\App\Services\AuditService::class)->log(
+            actionType: $action,
+            module: 'Assets',
+            model: $asset,
+            newValues: $properties,
+            details: $description
+        );
     }
 }

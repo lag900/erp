@@ -498,7 +498,7 @@ const currentDate = new Date().toLocaleDateString('en-US', {
                                                 </div>
 
                                                 <div class="flex-1 min-w-0">
-                                                    <div class="text-[14px] font-semibold text-slate-800 leading-snug">
+                                                    <div class="text-[14px] font-semibold text-slate-800 leading-snug content-protect">
                                                         <span class="font-bold text-[#3d4adb]">{{ log.user?.name || 'System' }}</span>
                                                         <span class="text-slate-500 ml-1">{{ log.description.toLowerCase().replace(log.user?.name.toLowerCase() || '', '').trim() }}</span>
                                                     </div>
@@ -506,14 +506,14 @@ const currentDate = new Date().toLocaleDateString('en-US', {
                                                     <!-- Deep Audit Details (Old vs New) -->
                                                     <div v-if="log.properties" class="mt-3 space-y-2">
                                                         <div v-if="log.properties.attributes" class="rounded-xl bg-slate-50/50 border border-slate-100 p-3">
-                                                            <div v-for="(value, key) in log.properties.attributes" :key="key" class="text-[11px] mb-1.5 last:mb-0">
-                                                                <span class="font-bold text-slate-400 uppercase tracking-tighter mr-2">{{ key.replace('_', ' ') }}:</span>
-                                                                <span v-if="log.properties.old && log.properties.old[key] !== undefined" class="text-rose-500 line-through opacity-60 mr-2">{{ log.properties.old[key] }}</span>
-                                                                <span class="text-emerald-600 font-bold">{{ value }}</span>
+                                                            <div v-for="(value, key) in log.properties.attributes" :key="key" class="text-[11px] mb-1.5 last:mb-0 content-protect">
+                                                                <span class="font-bold text-slate-400 uppercase tracking-tighter mr-2 whitespace-nowrap">{{ key.replace('_', ' ') }}:</span>
+                                                                <span v-if="log.properties.old && log.properties.old[key] !== undefined" class="text-rose-500 line-through opacity-60 mr-2 break-all">{{ log.properties.old[key] }}</span>
+                                                                <span class="text-emerald-600 font-bold break-all">{{ value }}</span>
                                                             </div>
                                                         </div>
                                                         <!-- Direct properties for user creation/role changes -->
-                                                        <div v-else-if="log.properties.role" class="rounded-xl bg-[#3d4adb]/5 border border-[#3d4adb]/10 p-2.5">
+                                                        <div v-else-if="log.properties.role" class="rounded-xl bg-[#3d4adb]/5 border border-[#3d4adb]/10 p-2.5 content-protect">
                                                              <span class="text-[11px] font-bold text-[#3d4adb] uppercase tracking-widest">Access Level: {{ log.properties.role }}</span>
                                                         </div>
                                                     </div>

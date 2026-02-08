@@ -11,7 +11,7 @@ use App\Models\Location;
 use App\Models\News;
 use App\Models\Room;
 use App\Models\SubCategory;
-use App\Models\ActivityLog;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,8 +35,8 @@ class DashboardController extends Controller
             'mostEnteredData' => $this->getMostEnteredData($departmentId),
             'topContributors' => $this->getTopContributors($departmentId),
             'activityLogs' => $this->getActivityLogs($request, $user, $departmentId),
-            'logActions' => ActivityLog::distinct()->pluck('action'),
-            'allUsers' => ($user->hasRole('SuperAdmin') || $user->can('view_all_activity_logs'))
+            'logActions' => AuditLog::distinct()->pluck('action_type'),
+            'allUsers' => ($user->hasRole('SuperAdmin') || $user->can('view-audit-logs'))
                 ? User::orderBy('name')->get(['id', 'name'])
                 : [],
             'recentActivity' => $this->getRecentActivity($departmentId),
@@ -129,10 +129,10 @@ class DashboardController extends Controller
 
     private function getActivityLogs(Request $request, $user, $departmentId)
     {
-        $query = ActivityLog::with(['user' => fn($q) => $q->select('id', 'name', 'image')])
+        $query = AuditLog::with(['user' => fn($q) => $q->select('id', 'name', 'image')])
             ->latest();
 
-        if (!$user->can('view_all_activity_logs') && !$user->hasRole('SuperAdmin')) {
+        if (!$user->can('view-audit-logs') && !$user->hasRole('SuperAdmin')) {
             if ($user->hasRole('Admin') && $departmentId) {
                 $departmentUserIds = User::whereHas('departments', fn($q) => $q->where('departments.id', $departmentId))->pluck('id');
                 $query->whereIn('user_id', $departmentUserIds);
@@ -142,14 +142,17 @@ class DashboardController extends Controller
         }
 
         if ($request->filled('log_user_id')) $query->where('user_id', $request->log_user_id);
-        if ($request->filled('log_action')) $query->where('action', $request->log_action);
+        if ($request->filled('log_action')) $query->where('action_type', $request->log_action);
         if ($request->filled('log_date')) $query->whereDate('created_at', $request->log_date);
 
         return $query->take(30)->get()->map(fn($log) => [
             'id' => $log->id,
-            'action' => $log->action,
-            'description' => $log->description,
-            'properties' => $log->properties, // Added for deep audit details
+            'action' => $log->action_type,
+            'description' => $log->module . ' ' . $log->action_type,
+            'properties' => [
+                'attributes' => $log->new_values,
+                'old' => $log->old_values
+            ],
             'created_at' => $log->created_at,
             'user' => $log->user ? [
                 'id' => $log->user->id,

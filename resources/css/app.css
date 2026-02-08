@@ -227,8 +227,54 @@
     }
 }
 
-/* Toast Customization */
-.toast-container {
-    @apply fixed bottom-8 right-8 z-50 flex flex-col gap-3;
+
+/* --- Global Content Protection (Enterprise Hardening) --- */
+.content-protect {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    max-width: 100%;
+}
+
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Ensure no content ever breaks layout */
+img, video, canvas, svg {
+    max-width: 100%;
+    height: auto;
+}
+
+pre, code {
+    @apply rounded-lg bg-slate-900 text-slate-100 p-4 font-mono text-[11px] leading-relaxed overflow-x-auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-metadata-block {
+    @apply bg-slate-50/80 rounded-xl p-3 border border-slate-100/50 font-mono text-[10px] text-slate-500 leading-tight space-y-1;
+    word-break: break-all;
+}
+
+.audit-field-container {
+    @apply min-w-0 flex-1 overflow-hidden;
+}
+
+.breakable-url {
+    @apply text-primary hover:underline transition-all;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+    .ent-table td, .ent-table th {
+        @apply px-4 py-3;
+    }
 }
 

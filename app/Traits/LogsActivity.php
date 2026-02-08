@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 trait LogsActivity
 {
@@ -13,21 +14,22 @@ trait LogsActivity
      */
     public static function log($action, $description = null, $subject = null, $properties = [])
     {
-        // Don't log if there's no description and no properties
-        if (!$description && empty($properties)) {
-            return;
+        try {
+            $service = app(\App\Services\AuditService::class);
+            $module = $subject ? class_basename($subject) : 'General';
+            
+            $service->log(
+                actionType: $action,
+                module: $module,
+                model: ($subject instanceof Model) ? $subject : null,
+                oldValues: $properties['old'] ?? null,
+                newValues: $properties['attributes'] ?? ($properties ?: null),
+                status: 'success',
+                details: $description
+            );
+        } catch (\Throwable $e) {
+            Log::error('LogsActivity failed: ' . $e->getMessage());
         }
-
-        return ActivityLog::create([
-            'user_id' => Auth::id() ?? (app()->runningInConsole() ? null : null), // Handle system actions
-            'action' => $action,
-            'description' => $description,
-            'subject_type' => $subject ? (is_string($subject) ? $subject : get_class($subject)) : null,
-            'subject_id' => ($subject instanceof Model) ? $subject->id : (is_numeric($subject) ? $subject : null),
-            'properties' => $properties,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
     }
 
     /**

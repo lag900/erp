@@ -384,6 +384,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('permission-groups', \App\Http\Controllers\PermissionGroupsController::class)
         ->only(['store', 'update', 'destroy'])
         ->middleware('permission:permission-create');
+
+    // Enterprise Audit Trail
+    Route::middleware(['role:SuperAdmin'])->group(function () {
+        Route::get('/audit', [\App\Http\Controllers\AuditLogsController::class, 'index'])->name('audit.index');
+        Route::get('/audit/alerts', [\App\Http\Controllers\AuditLogsController::class, 'securityAlerts'])->name('audit.alerts');
+        Route::get('/audit/export', [\App\Http\Controllers\AuditLogsController::class, 'export'])->name('audit.export');
+        Route::get('/audit/{log}', [\App\Http\Controllers\AuditLogsController::class, 'show'])->name('audit.show');
+        Route::post('/audit/cleanup', [\App\Http\Controllers\AuditLogsController::class, 'cleanup'])->name('audit.cleanup');
+    });
 });
 
 require __DIR__.'/auth.php';

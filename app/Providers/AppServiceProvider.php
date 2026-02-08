@@ -34,29 +34,56 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
+        
+        // Register Observers for Enterprise Audit Trail
+        $auditModels = [
+            Asset::class,
+            User::class,
+            \App\Models\Category::class,
+            \App\Models\SubCategory::class,
+            \App\Models\Building::class,
+            \App\Models\Location::class,
+            \App\Models\Room::class,
+            \App\Models\Level::class,
+            \App\Models\Department::class,
+            \App\Models\Permission::class,
+        ];
+
+        foreach ($auditModels as $model) {
+            $model::observe(\App\Observers\AuditObserver::class);
+        }
+
+        // Specific Observers (if they have extra logic besides auditing)
         Asset::observe(AssetObserver::class);
         User::observe(UserObserver::class);
 
+        // Enterprise Auth Auditing
         Event::listen(Login::class, function ($event) {
-            ActivityLog::create([
-                'user_id' => $event->user->id,
-                'action' => 'login',
-                'description' => 'User logged in',
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
+            app(\App\Services\AuditService::class)->log(
+                actionType: 'login',
+                module: 'Auth',
+                details: "User {$event->user->email} logged in successfully."
+            );
         });
 
         Event::listen(Logout::class, function ($event) {
             if ($event->user) {
-                ActivityLog::create([
-                    'user_id' => $event->user->id,
-                    'action' => 'logout',
-                    'description' => 'User logged out',
-                    'ip_address' => request()->ip(),
-                    'user_agent' => request()->userAgent(),
-                ]);
+                app(\App\Services\AuditService::class)->log(
+                    actionType: 'logout',
+                    module: 'Auth',
+                    details: "User {$event->user->email} logged out."
+                );
             }
+        });
+
+        Event::listen(\Illuminate\Auth\Events\Failed::class, function ($event) {
+            app(\App\Services\AuditService::class)->log(
+                actionType: 'failed_login',
+                module: 'Auth',
+                status: 'failed',
+                details: "Failed login attempt for email: " . ($event->credentials['email'] ?? 'unknown'),
+                newValues: ['email' => $event->credentials['email'] ?? null]
+            );
         });
 
         Vite::prefetch(concurrency: 3);

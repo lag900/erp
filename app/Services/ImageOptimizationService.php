@@ -26,15 +26,25 @@ class ImageOptimizationService
     {
         $paths = [];
         
-        // Generate unique filename
-        $filename = time() . '_' . uniqid();
-        
-        // Process full-size optimized image
-        $paths['full'] = $this->optimizeAndStore($file, $folder, $filename, self::MAX_WIDTH_FULL);
-        
-        // Generate thumbnail if requested
-        if ($generateThumbnail) {
-            $paths['thumbnail'] = $this->optimizeAndStore($file, $folder . '/thumbnails', $filename . '_thumb', self::MAX_WIDTH_THUMBNAIL);
+        try {
+            // Generate unique filename
+            $filename = time() . '_' . uniqid();
+            
+            // Process full-size optimized image
+            $paths['full'] = $this->optimizeAndStore($file, $folder, $filename, self::MAX_WIDTH_FULL);
+            
+            // Generate thumbnail if requested
+            if ($generateThumbnail) {
+                $paths['thumbnail'] = $this->optimizeAndStore($file, $folder . '/thumbnails', $filename . '_thumb', self::MAX_WIDTH_THUMBNAIL);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Image processing failed: ' . $e->getMessage());
+            // Fallback to storing original file if optimization fails
+            $path = $file->store($folder, 'public');
+            $paths['full'] = $path;
+            if ($generateThumbnail) {
+                $paths['thumbnail'] = $path; // No thumbnail, just original
+            }
         }
         
         return $paths;
@@ -127,8 +137,8 @@ class ImageOptimizationService
             Storage::disk('public')->put($path, (string) $encoded);
             
             return true;
-        } catch (\Exception $e) {
-            \Log::error("Image optimization failed for {$path}: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error("Image optimization failed for {$path}: " . $e->getMessage());
             return false;
         }
     }

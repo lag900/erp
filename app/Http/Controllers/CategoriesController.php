@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class CategoriesController extends Controller
 {
@@ -83,20 +85,50 @@ class CategoriesController extends Controller
 
     public function store(StoreCategoryRequest $request)
     {
-        $data = $request->validated();
-        
-        // Auto Generate Code
-        $data['code'] = $this->categoryService->generateUniqueCode($data['name']);
+        try {
+            DB::beginTransaction();
 
-        // Handle Image
-        if ($request->hasFile('image')) {
-            $data['image'] = $this->fileService->updateFile($request->file('image'), 'categories');
+            $data = $request->validated();
+            
+            // Auto Generate Code if not provided or just generate it (based on logic)
+            // Assuming generating is always desired as per currently existing code
+            try {
+                $data['code'] = $this->categoryService->generateUniqueCode($data['name']);
+            } catch (\Throwable $e) {
+                Log::error('Failed to generate category code: ' . $e->getMessage());
+                // Fallback or accept that it might be null if database allows, or generate a simple random one
+                $data['code'] = 'CAT-' . uniqid();
+            }
+
+            // Handle Image safely
+            if ($request->hasFile('image')) {
+                try {
+                    $data['image'] = $this->fileService->updateFile($request->file('image'), 'categories');
+                } catch (\Throwable $e) {
+                    Log::error('Image upload failed for category: ' . $e->getMessage());
+                    // Continue without image, do not crash
+                    $data['image'] = null;
+                }
+            }
+
+            $category = Category::create($data);
+            
+            // Sync departments if provided
+            if (!empty($data['department_ids'])) {
+                $category->departments()->sync($data['department_ids']);
+            }
+
+            DB::commit();
+
+            return redirect()->route('categories.index')->with('success', 'Category created successfully.');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Creating category failed: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
+            
+            return back()->with('error', 'Internal system malfunction. Please try again shortly. Error: ' . substr($e->getMessage(), 0, 50));
         }
-
-        $category = Category::create($data);
-        $category->departments()->sync($data['department_ids']);
-
-        return redirect()->route('categories.index')->with('success', 'Category created successfully.');
     }
 
     public function update(UpdateCategoryRequest $request, Category $category)

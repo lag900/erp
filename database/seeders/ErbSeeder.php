@@ -66,14 +66,18 @@ class ErbSeeder extends Seeder
 
         $mainBuilding = Building::updateOrCreate([
             'location_id' => $mainLocation->id,
-            'name' => 'Workshops Building',
+            'name_en' => 'Workshops Building',
         ], [
+            'name' => 'Workshops Building',
+            'name_ar' => 'مبنى الورش والمعامل',
             'code' => 'WB-01',
         ]);
         $southBuilding = Building::updateOrCreate([
             'location_id' => $southLocation->id,
-            'name' => 'Administration Building',
+            'name_en' => 'Administration Building',
         ], [
+            'name' => 'Administration Building',
+            'name_ar' => 'مبنى الإدارة المركزية',
             'code' => 'AB-01',
         ]);
 

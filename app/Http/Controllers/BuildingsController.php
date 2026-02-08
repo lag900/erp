@@ -103,6 +103,7 @@ class BuildingsController extends Controller
     public function update(UpdateBuildingRequest $request, Building $building)
     {
         $data = $request->validated();
+        unset($data['image']);
         $data['name'] = $data['name_en'];
 
         if ($request->hasFile('image')) {

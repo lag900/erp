@@ -14,8 +14,8 @@ const props = defineProps({
 
 const classes = computed(() =>
     props.active
-        ? 'group flex items-center rounded-md bg-secondary px-3 py-2 text-sm font-semibold text-primary transition-all'
-        : 'group flex items-center rounded-md px-3 py-2 text-sm font-medium text-gray-500 transition-all hover:bg-gray-50 hover:text-gray-900'
+        ? 'group flex items-center rounded-xl bg-[#3d4adb]/10 px-4 py-2.5 text-[14px] font-bold text-[#3d4adb] shadow-sm shadow-[#3d4adb]/5 transition-all duration-200'
+        : 'group flex items-center rounded-xl px-4 py-2.5 text-[14px] font-semibold text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:text-slate-800'
 );
 </script>
 
@@ -24,3 +24,4 @@ const classes = computed(() =>
         <slot />
     </Link>
 </template>
+

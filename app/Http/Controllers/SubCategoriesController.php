@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateSubCategoryRequest;
 use App\Models\Category;
 use App\Models\SubCategory;
 use App\Services\FileService;
+use App\Services\CodeGeneratorService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -55,9 +56,7 @@ class SubCategoriesController extends Controller
 
         // Auto Generate Code if not provided
         if (empty($data['code'])) {
-            $base = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $data['name']), 0, 3));
-            $count = SubCategory::where('code', 'LIKE', $base . '%')->count();
-            $data['code'] = $count ? $base . ($count + 1) : $base;
+            $data['code'] = CodeGeneratorService::generateModelCode($data['name'], SubCategory::class);
         }
 
         if ($request->hasFile('image')) {
@@ -90,6 +89,7 @@ class SubCategoriesController extends Controller
     public function update(UpdateSubCategoryRequest $request, SubCategory $subCategory)
     {
         $data = $request->validated();
+        unset($data['image']);
 
         if ($request->hasFile('image')) {
             $data['image'] = $this->fileService->updateFile($request->file('image'), 'subcategories', $subCategory->image);

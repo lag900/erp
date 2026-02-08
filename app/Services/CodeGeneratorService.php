@@ -39,4 +39,26 @@ class CodeGeneratorService
         
         return $count ? $baseCode . '-' . ($count + 1) : $baseCode;
     }
+
+    public static function generateModelCode(string $name, string $modelClass): string
+    {
+        // Keep only alphanumeric and convert to uppercase
+        $cleanName = preg_replace('/[^A-Za-z0-9]/', '', $name);
+        $base = strtoupper(substr($cleanName, 0, 3));
+        
+        if (empty($base)) {
+            $base = 'CAT'; // Default fallback
+        }
+
+        // Count existing records starting with this base
+        $count = $modelClass::where('code', 'LIKE', $base . '%')->count();
+        
+        if ($count === 0) {
+            return $base;
+        }
+
+        // COM (count 1) -> COM1
+        // COM, COM1 (count 2) -> COM2
+        return $base . $count;
+    }
 }

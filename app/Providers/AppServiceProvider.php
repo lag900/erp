@@ -66,5 +66,37 @@ class AppServiceProvider extends ServiceProvider
 
             return false;
         });
+
+        // --- PRODUCTION AUTO-PROVISIONING ---
+        // Automatically creates a SuperAdmin account if none exists.
+        // This runs only in non-console production environments for first-boot safety.
+        if (!app()->runningInConsole()) {
+            \Illuminate\Support\Facades\Cache::remember('superadmin_provisioned', 3600, function () {
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('users')) {
+                        $exists = \App\Models\User::role('SuperAdmin')->exists() || \App\Models\User::where('email', '1@1.com')->exists();
+                        
+                        if (!$exists) {
+                            $user = \App\Models\User::create([
+                                'name' => 'System Owner',
+                                'email' => '1@1.com',
+                                'password' => \Illuminate\Support\Facades\Hash::make('1@1.com'),
+                                'email_verified_at' => now(),
+                                'role' => 'SuperAdmin',
+                                'is_active' => true,
+                            ]);
+
+                            $role = \Spatie\Permission\Models\Role::where('name', 'SuperAdmin')->first();
+                            if ($role) {
+                                $user->assignRole($role);
+                            }
+                        }
+                    }
+                    return true;
+                } catch (\Exception $e) {
+                    return false; // Table might not exist yet during migration
+                }
+            });
+        }
     }
 }

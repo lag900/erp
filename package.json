@@ -22,6 +22,7 @@
     },
     "dependencies": {
         "browser-image-compression": "^2.0.2",
-        "lodash": "^4.17.23"
+        "lodash": "^4.17.23",
+        "sweetalert2": "^11.26.18"
     }
 }

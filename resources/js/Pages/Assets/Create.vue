@@ -282,7 +282,7 @@ const setMode = (mode) => {
 
 const submitLabel = computed(() => {
     if (form.processing) return 'Saving...';
-    if (form.entry_type === 'bundle') return `Register System (${form.components.length} items)`;
+    if (form.entry_type === 'bundle') return `Register  (${form.components.length} items)`;
     return form.entry_type === 'series' 
         ? `Register ${form.count} Assets` 
         : 'Register Asset';

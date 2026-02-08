@@ -31,7 +31,7 @@ const Icon = defineComponent({
     render() {
         const path = icons[this.name] || 'M12 4v16m8-8H4'; // Fallback
         return h('svg', {
-            class: ['mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-[#1FA6A0] transition-colors', this.active ? 'text-[#1FA6A0]' : ''],
+            class: ['mr-3 h-5 w-5 flex-shrink-0 transition-colors', this.active ? 'text-[#3d4adb]' : 'text-slate-400 group-hover:text-[#3d4adb]'],
             fill: 'none',
             stroke: 'currentColor',
             viewBox: '0 0 24 24',
@@ -48,46 +48,46 @@ const Icon = defineComponent({
 </script>
 
 <template>
-    <aside class="flex h-screen w-72 flex-col border-r border-gray-200 bg-white shadow-sm transition-all duration-300">
+    <aside class="flex h-screen w-72 flex-col border-r border-slate-200 bg-white shadow-sm transition-all duration-300">
         <!-- Logo Area -->
-        <div class="flex items-center gap-3 border-b border-gray-100 px-6 py-5">
-            <Link :href="route('dashboard')" class="flex items-center gap-2 group">
+        <div class="flex items-center gap-3 border-b border-slate-50 px-6 py-6">
+            <Link :href="route('dashboard')" class="flex items-center gap-3 group">
                 <img 
                     src="/images/logo.png" 
-                    alt="BATU Logo" 
-                    class="h-9 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                    alt="University Logo" 
+                    class="h-10 w-auto object-contain transition-transform duration-500 group-hover:scale-105"
                 />
                 <div class="flex flex-col">
-                    <span class="text-xs font-bold uppercase tracking-wide text-gray-900 leading-none">
+                    <span class="text-[13px] font-bold tracking-tight text-slate-800 leading-none">
                         Borg Al Arab
                     </span>
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 leading-none mt-1">
-                        Technological University
+                    <span class="text-[10px] font-bold text-slate-400 mt-1 leading-none">
+                        Technological Uni.
                     </span>
                 </div>
             </Link>
         </div>
 
         <!-- Department Switcher -->
-        <div class="px-4 py-4">
+        <div class="px-4 py-5">
             <DepartmentSwitcher />
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 overflow-y-auto px-4 pb-4 space-y-6 scrollbar-hide">
-            <!-- General / Fixed Items -->
+        <nav class="flex-1 overflow-y-auto px-4 pb-6 space-y-7 scrollbar-hide mt-2">
+            <!-- General Items -->
             <div class="space-y-1">
                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                    <svg class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-[#1FA6A0] transition-colors" :class="{ 'text-[#1FA6A0]': route().current('dashboard') }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    <svg class="mr-3 h-5 w-5 flex-shrink-0 transition-colors" :class="route().current('dashboard') ? 'text-[#3d4adb]' : 'text-slate-400 group-hover:text-[#3d4adb]'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     Dashboard
                 </NavLink>
             </div>
 
-            <!-- Dynamic Permission-Based Sidebar -->
+            <!-- Dynamic Permission-Based Groups -->
             <div v-for="group in sidebarGroups" :key="group.group">
-                <h3 class="px-3 mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center justify-between">
+                <h3 class="px-3 mb-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400/80 flex items-center justify-between">
                     {{ group.group }}
-                    <span class="h-px flex-1 bg-gray-100 ml-3"></span>
+                    <span class="h-px flex-1 bg-slate-100 ml-4"></span>
                 </h3>
                 <div class="space-y-1">
                     <NavLink 
@@ -102,32 +102,27 @@ const Icon = defineComponent({
                 </div>
             </div>
 
-            <!-- Empty State if no permissions -->
-            <div v-if="sidebarGroups.length === 0" class="px-4 py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                <svg class="mx-auto h-8 w-8 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                <p class="text-xs text-gray-400 font-medium">No assigned modules</p>
+            <!-- Empty State -->
+            <div v-if="sidebarGroups.length === 0" class="px-6 py-10 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                <p class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">No modules</p>
             </div>
         </nav>
 
-        <!-- Footer / Support -->
-        <div class="p-4 border-t border-gray-50">
-            <div class="p-3 bg-gradient-to-br from-[#1FA6A0]/5 to-blue-500/5 rounded-xl border border-[#1FA6A0]/10">
-                <div class="flex items-center gap-2 mb-1">
-                    <div class="w-1.5 h-1.5 rounded-full bg-[#1FA6A0]"></div>
-                    <span class="text-[10px] font-bold text-gray-700 uppercase tracking-wider">Enterprise Status</span>
+        <!-- Enterprise Access Card -->
+        <div class="p-6 border-t border-slate-50">
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Secure Session</span>
                 </div>
-                <p class="text-[9px] text-gray-500 leading-tight">Your access is managed by the central security policy.</p>
+                <p class="text-[10px] text-slate-400 font-medium leading-relaxed">Enterprise access active. Sessions are monitored for security.</p>
             </div>
         </div>
     </aside>
 </template>
 
 <style scoped>
-.scrollbar-hide::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
+

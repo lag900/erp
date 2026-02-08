@@ -70,6 +70,8 @@ class AdministrationUnitsController extends Controller
             'status' => ['required', 'string', 'in:active,inactive'],
         ]);
 
+        unset($data['director_image']);
+
         if ($request->hasFile('director_image')) {
             // Delete old image if exists
             if ($unit->director_image) {

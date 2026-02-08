@@ -100,9 +100,7 @@ class CategoriesController extends Controller
     public function update(UpdateCategoryRequest $request, Category $category)
     {
         $data = $request->validated();
-
-        // Optional: Re-generate code if name changed? 
-        // User didn't specify, but usually code stays fixed.
+        unset($data['image']);
 
         // Handle Image with Automatic Old Image Deletion
         if ($request->hasFile('image')) {

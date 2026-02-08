@@ -62,28 +62,28 @@ const printReport = () => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex items-center justify-between no-print">
-                <div class="flex items-center gap-4">
-                    <Link :href="route('reports.index')" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <svg class="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1 no-print">
+                <div class="flex items-center gap-5">
+                    <Link :href="route('reports.index')" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-all hover:bg-slate-50 hover:text-[#3d4adb] shadow-soft group">
+                        <svg class="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                     </Link>
                     <div>
-                        <h2 class="text-xl font-bold text-gray-900">{{ getArabicTitle(type) }}</h2>
-                        <p class="text-xs text-gray-500 uppercase tracking-widest font-bold">{{ type.replace('_', ' ') }}</p>
+                        <h2 class="text-2xl font-bold tracking-tight text-slate-800 leading-tight">{{ getArabicTitle(type) }}</h2>
+                        <p class="mt-1 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{{ type.replace('_', ' ') }} Precision Audit</p>
                     </div>
                 </div>
-                <div class="flex gap-3">
-                    <button @click="printReport" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg font-bold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-50 shadow-sm transition-all">
-                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                        Print Preview
+                <div class="flex items-center gap-3">
+                    <button @click="printReport" class="inline-flex h-11 items-center px-6 bg-white border border-slate-200 rounded-xl font-black text-[10px] text-slate-600 uppercase tracking-widest hover:bg-slate-50 shadow-soft transition-all">
+                        <svg class="w-4 h-4 mr-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        Print Review
                     </button>
-                    <button @click="exportReport('pdf')" class="inline-flex items-center px-4 py-2 bg-rose-600 border border-transparent rounded-lg font-bold text-xs text-white uppercase tracking-widest hover:bg-rose-700 shadow-md transition-all">
-                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    <button @click="exportReport('pdf')" class="inline-flex h-11 items-center px-6 bg-rose-600 border border-transparent rounded-xl font-black text-[10px] text-white uppercase tracking-widest hover:bg-rose-700 shadow-premium transition-all active:scale-95">
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                         Export PDF
                     </button>
-                    <button @click="exportReport('excel')" class="inline-flex items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-lg font-bold text-xs text-white uppercase tracking-widest hover:bg-emerald-700 shadow-md transition-all">
-                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        Excel
+                    <button @click="exportReport('excel')" class="inline-flex h-11 items-center px-6 bg-emerald-600 border border-transparent rounded-xl font-black text-[10px] text-white uppercase tracking-widest hover:bg-emerald-700 shadow-premium transition-all active:scale-95">
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Spreadsheet
                     </button>
                 </div>
             </div>
@@ -91,33 +91,36 @@ const printReport = () => {
 
         <div class="py-12 bg-gray-100/50 min-h-screen">
             <div class="mx-auto max-w-[1000px] sm:px-6 lg:px-8">
-                <!-- Filters (Hidden on Print) -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8 no-print">
-                    <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Report Filters</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div>
-                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 block">Date From</label>
-                            <input type="date" v-model="activeFilters.date_from" class="w-full text-xs rounded-lg border-gray-300 bg-gray-50 focus:ring-indigo-500" />
+                <!-- Governance Filter Protocol (Hidden on Print) -->
+                <div class="bg-white p-8 rounded-[32px] shadow-soft border border-emerald-100/30 mb-10 no-print">
+                    <div class="flex items-center gap-3 mb-8">
+                        <div class="h-8 w-1 bg-[#3d4adb] rounded-full"></div>
+                        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Audit Configuration</h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-[#3d4adb] block">Temporal Start</label>
+                            <input type="date" v-model="activeFilters.date_from" class="w-full text-[13px] font-bold h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white focus:border-[#3d4adb]/30 focus:ring-[#3d4adb]/10 transition-all cursor-pointer" />
                         </div>
-                        <div>
-                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 block">Date To</label>
-                            <input type="date" v-model="activeFilters.date_to" class="w-full text-xs rounded-lg border-gray-300 bg-gray-50 focus:ring-indigo-500" />
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-[#3d4adb] block">Temporal End</label>
+                            <input type="date" v-model="activeFilters.date_to" class="w-full text-[13px] font-bold h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white focus:border-[#3d4adb]/30 focus:ring-[#3d4adb]/10 transition-all cursor-pointer" />
                         </div>
-                        <div>
-                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 block">Category</label>
-                            <select v-model="activeFilters.category_id" class="w-full text-xs rounded-lg border-gray-300 bg-gray-50">
-                                <option value="">All Categories</option>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-[#3d4adb] block">Taxonomy Filter</label>
+                            <select v-model="activeFilters.category_id" class="w-full text-[13px] font-bold h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white focus:border-[#3d4adb]/30 focus:ring-[#3d4adb]/10 transition-all">
+                                <option value="">Universal Classifications</option>
                                 <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1 block">Status</label>
-                            <select v-model="activeFilters.status" class="w-full text-xs rounded-lg border-gray-300 bg-gray-50">
-                                <option value="">All Statuses</option>
-                                <option value="active">Active</option>
-                                <option value="maintenance">Maintenance</option>
-                                <option value="damaged">Damaged</option>
-                                <option value="retired">Retired</option>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-[#3d4adb] block">Health Status</label>
+                            <select v-model="activeFilters.status" class="w-full text-[13px] font-bold h-12 rounded-xl border-slate-100 bg-slate-50 focus:bg-white focus:border-[#3d4adb]/30 focus:ring-[#3d4adb]/10 transition-all">
+                                <option value="">All Operational States</option>
+                                <option value="active" class="font-bold text-emerald-600">Active (Operational)</option>
+                                <option value="maintenance" class="font-bold text-blue-600">Maintenance</option>
+                                <option value="damaged" class="font-bold text-rose-600">Damaged (Faulty)</option>
+                                <option value="retired" class="font-bold text-slate-500">Retired (Decommissioned)</option>
                             </select>
                         </div>
                     </div>

@@ -6,336 +6,229 @@
 
 @layer base {
     :root {
-        --primary: #111827; /* Official Dark/Black */
-        --primary-hover: #030712;
-        --primary-light: #F3F4F6;
-        --accent: #1FA6A0; 
-        --text-primary: #111827;
-        --text-secondary: #4B5563;
-        --text-light: #9CA3AF;
-        --bg-page: #F9FAFB;
+        /* Enterprise Color System - Formal & Calm */
+        --primary: #3d4adb;
+        --primary-hover: #2c36b8;
+        --primary-soft: rgba(61, 74, 219, 0.08);
+        --primary-content: #ffffff;
+        
+        --success: #10b981;
+        --success-hover: #059669;
+        --success-soft: rgba(16, 185, 129, 0.08);
+        
+        --danger: #ef4444;
+        --danger-hover: #dc2626;
+        --danger-soft: rgba(239, 68, 68, 0.08);
+        
+        --warning: #f59e0b;
+        --warning-soft: rgba(245, 158, 11, 0.08);
+
+        /* Neutrals - Grayscale balance */
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --text-light: #94a3b8;
+        
+        --bg-main: #f8fafc;
+        --bg-card: #ffffff;
+        --border-main: #e2e8f0;
+        --border-soft: #f1f5f9;
     }
 
     html {
         font-size: 16px;
-    }
-
-    html, body, input, button, select, textarea {
-        font-family: 'Inter', 'Cairo', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        scroll-behavior: smooth;
     }
 
     body {
-        @apply antialiased bg-[#F8FAFC];
-        color: var(--text-primary);
+        @apply antialiased bg-[#f8fafc];
+        color: var(--text-main);
+        font-family: 'Inter', 'Cairo', system-ui, -apple-system, sans-serif;
         font-size: 14.5px;
         line-height: 1.6;
-        letter-spacing: 0.2px;
+        letter-spacing: -0.01em;
     }
 
-    /* Typography System */
-    h1, h2, h3, h4 {
-        @apply tracking-tight;
-        color: var(--text-primary);
-        font-weight: 600; /* semi-bold fallback */
+    /* Typography - Professional & Readable */
+    h1, h2, h3, h4, h5 {
+        @apply font-bold tracking-tight text-slate-800;
+        line-height: 1.25;
     }
 
-    h1 { font-size: 28px; line-height: 1.2; }
-    h2 { font-size: 22px; line-height: 1.3; }
-    h3 { font-size: 18px; font-weight: 500; }
-    h4 { font-size: 16px; font-weight: 500; }
+    h1 { font-size: 1.875rem; } /* 30px */
+    h2 { font-size: 1.5rem; }    /* 24px */
+    h3 { font-size: 1.25rem; }   /* 20px */
+    h4 { font-size: 1.125rem; }  /* 18px */
+    h5 { font-size: 1rem; }      /* 16px */
 
+    /* Scrollbar - Minimal & Discrete */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { 
+        background: #cbd5e1; 
+        border-radius: 10px; 
+        transition: background 0.2s;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Forms - Enterprise Standard */
     input, select, textarea {
-        font-size: 14.5px;
-    }
-
-    table {
-        font-size: 14px;
-        font-family: 'Inter', sans-serif;
-    }
-
-    /* Professional Scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-        background: white;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #E5E7EB;
-        border-radius: 100px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #D1D5DB;
-    }
-
-    /* Enterprise Form System */
-    input, select, textarea {
-        background-color: #F8FAFC !important;
-        border: 1px solid #E5E7EB !important;
-        border-radius: 10px !important;
+        @apply bg-[#fcfdfe] border-slate-200 rounded-xl transition-all duration-200;
         height: 44px;
-        font-size: 15px !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        transition: all 0.2s ease-in-out !important;
-        color: #1F2937 !important;
-        font-weight: 500 !important;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        font-size: 14.5px !important;
+        color: var(--text-main);
+        border-width: 1px !important;
     }
 
     input:focus, select:focus, textarea:focus {
-        background-color: #FFFFFF !important;
-        border-color: #1FA6A0 !important;
-        outline: none !important;
-        box-shadow: 0 0 0 4px rgba(31, 166, 160, 0.1) !important;
+        @apply ring-4 ring-primary/5 border-primary bg-white outline-none;
+        border-color: var(--primary) !important;
     }
 
     select {
+        @apply pr-10;
         appearance: none;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
         background-position: right 0.75rem center;
         background-repeat: no-repeat;
-        background-size: 1.5em 1.5em;
-        padding-right: 2.5rem !important;
+        background-size: 1.25em 1.25em;
     }
 
     textarea {
+        @apply py-3;
         height: auto !important;
-        min-height: 80px;
-        padding-top: 0.75rem !important;
+        min-height: 100px;
     }
 
-    .form-group-label {
-        font-size: 11px;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #9CA3AF;
-        margin-bottom: 0.375rem;
-        display: block;
+    .label-enterprise {
+        @apply text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-1.5 block;
     }
 }
 
 @layer components {
-    .shadow-soft {
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    }
-    .shadow-premium {
-        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -3px rgba(0, 0, 0, 0.02);
+    /* Utility Frames */
+    .glass-card {
+        @apply bg-white border border-slate-200 shadow-soft rounded-3xl overflow-hidden;
     }
 
-    /* Toast Animations */
-    .toast-enter-active,
-    .toast-leave-active {
-        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    .shadow-soft {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
     }
-    .toast-enter-from {
-        opacity: 0;
-        transform: translateX(100px) scale(0.9);
-    }
-    .toast-leave-to {
-        opacity: 0;
-        transform: translateY(-20px) scale(0.9);
+    
+    .shadow-premium {
+        box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.05), 0 4px 12px -2px rgba(0, 0, 0, 0.02);
     }
 
     /* --- Enterprise Button System --- */
-    
     .btn-base {
-        @apply inline-flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed;
+        @apply inline-flex items-center justify-center transition-all duration-200 font-semibold focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none;
+        height: 42px;
+        padding: 0 1.5rem;
+        border-radius: 14px;
+        font-size: 0.875rem;
     }
 
-    /* 1. Primary Action (Official Dark) */
     .btn-primary {
-        @apply btn-base;
+        @apply btn-base text-white shadow-sm hover:shadow-md active:scale-[0.98];
         background-color: var(--primary);
-        color: white;
-        height: 40px; /* More compact */
-        padding: 0 20px;
-        border-radius: 12px; /* Consistent radius */
-        font-weight: 600;
-        border: none;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        font-size: 13.5px;
-        letter-spacing: 0.01em;
     }
     .btn-primary:hover {
         background-color: var(--primary-hover);
         transform: translateY(-1px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-    .btn-primary:active {
-        transform: translateY(0);
     }
 
-    /* 2. Secondary Button */
     .btn-secondary {
-        @apply btn-base;
-        background-color: white;
-        border: 1px solid #E5E7EB;
-        color: #374151;
-        height: 40px;
-        padding: 0 20px;
-        border-radius: 12px;
-        font-weight: 500;
-        font-size: 13.5px;
-    }
-    .btn-secondary:hover {
-        background-color: #F9FAFB;
-        border-color: #D1D5DB;
+        @apply btn-base bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-800 active:scale-[0.98];
     }
 
-    /* 3. Danger Button */
     .btn-danger {
-        @apply btn-base;
-        background-color: #FEF2F2;
-        color: #DC2626;
-        border: 1px solid #FCA5A5;
-        height: 42px;
-        padding: 0 18px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 14px;
+        @apply btn-base text-white hover:shadow-md active:scale-[0.98];
+        background-color: var(--danger);
     }
     .btn-danger:hover {
-        background-color: #fee2e2;
-        border-color: #F87171;
-    }
-    .btn-danger:focus {
-        --tw-ring-color: #DC2626;
+        background-color: var(--danger-hover);
+        transform: translateY(-1px);
     }
 
-    /* 4. Icon Button */
     .btn-icon {
-        @apply btn-base;
+        @apply inline-flex items-center justify-center rounded-xl transition-all duration-200 text-slate-400 hover:text-primary hover:bg-primary-soft;
         width: 36px;
         height: 36px;
-        border-radius: 8px;
-        background-color: #F3F4F6;
-        color: #374151; /* Default/Edit color */
-        border: none;
-    }
-    .btn-icon:hover {
-        background-color: #E5E7EB;
-    }
-    
-    .btn-icon.danger {
-        color: #DC2626;
-        background-color: #FEF2F2; /* Subtle red bg for danger icon */
-    }
-    .btn-icon.danger:hover {
-        background-color: #FEE2E2;
     }
 
-    /* --- Global ERP Enterprise Card System --- */
-    .entity-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E5E7EB;
-        border-radius: 16px;
-        overflow: hidden;
-        transition: all 0.2s ease-in-out;
-        display: flex;
-        flex-direction: column;
+    .btn-icon-danger {
+        @apply btn-icon hover:text-danger hover:bg-danger-soft;
     }
-    .entity-card:hover {
-        border-color: #D1D5DB;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+    /* --- Enterprise Tables --- */
+    .table-container {
+        @apply bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-soft;
+    }
+
+    .ent-table {
+        @apply w-full border-collapse text-left;
+    }
+
+    .ent-table thead tr {
+        @apply bg-slate-50/50 border-b border-slate-100;
+    }
+
+    .ent-table th {
+        @apply px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400;
+    }
+
+    .ent-table tbody tr {
+        @apply border-b border-slate-50 transition-colors duration-200 hover:bg-slate-50/30;
+    }
+
+    .ent-table td {
+        @apply px-6 py-4 text-[14px] text-slate-600 align-middle;
+    }
+
+    /* --- Badges --- */
+    .badge-base {
+        @apply inline-flex items-center rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border;
+    }
+
+    .badge-success { @apply badge-base bg-emerald-50 text-emerald-600 border-emerald-100; }
+    .badge-danger { @apply badge-base bg-rose-50 text-rose-600 border-rose-100; }
+    .badge-primary { @apply badge-base bg-indigo-50 text-indigo-600 border-indigo-100; }
+    .badge-warning { @apply badge-base bg-amber-50 text-amber-600 border-amber-100; }
+    .badge-neutral { @apply badge-base bg-slate-100 text-slate-500 border-slate-200; }
+
+    /* --- Enterprise Cards (Entities) --- */
+    .entity-card {
+        @apply bg-white border border-slate-200 rounded-3xl overflow-hidden transition-all duration-300 flex flex-col hover:border-primary/20 hover:shadow-premium;
     }
 
     .entity-card .card-image {
-        position: relative;
-        height: 192px; /* h-48 */
-        width: 100%;
-        background-color: #F3F4F6;
-        overflow: hidden;
+        @apply relative h-48 w-full bg-slate-50 overflow-hidden;
     }
 
     .entity-card .card-body {
-        padding: 16px; /* p-4 */
-        flex: 1;
-        display: flex;
-        flex-direction: column;
+        @apply p-6 flex-1 flex flex-col;
     }
 
     .entity-card .title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #111827;
-        line-height: 1.4;
-        margin-bottom: 4px;
-        display: -webkit-box;
-        -webkit-line-clamp: 1;
-        line-clamp: 1;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        @apply text-[16px] font-bold text-slate-800 leading-snug mb-1 line-clamp-1;
     }
 
     .entity-card .subtitle {
-        font-size: 13px;
-        color: #6B7280;
-        font-weight: 500;
+        @apply text-[11px] font-bold text-slate-400 uppercase tracking-widest;
     }
 
     .entity-card .card-footer {
-        margin-top: auto;
-        padding-top: 16px;
-        border-top: 1px solid #F9FAFB;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        @apply mt-auto pt-5 border-t border-slate-50 flex items-center justify-between;
     }
 
     .entity-card .actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    /* --- Unified Action Buttons --- */
-    .edit-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #F3F4F6;
-        color: #374151;
-        border-radius: 8px;
-        width: 32px;
-        height: 32px;
-        padding: 6px;
-        border: none;
-        transition: background-color 0.2s;
-    }
-    .edit-btn:hover {
-        background-color: #E5E7EB;
-        color: #1F2937;
-    }
-
-    .delete-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #FEF2F2;
-        color: #DC2626;
-        border-radius: 8px;
-        width: 32px;
-        height: 32px;
-        padding: 6px;
-        border: none;
-        transition: background-color 0.2s;
-    }
-    .delete-btn:hover {
-        background-color: #FEE2E2;
-        color: #B91C1C;
-    }
-
-    /* --- Badge --- */
-    .badge-code {
-        background-color: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(4px);
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 700;
-        color: #1F2937;
-        border: 1px solid rgba(0,0,0,0.05);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        @apply flex gap-2;
     }
 }
+
+/* Toast Customization */
+.toast-container {
+    @apply fixed bottom-8 right-8 z-50 flex flex-col gap-3;
+}
+

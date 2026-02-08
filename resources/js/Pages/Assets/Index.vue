@@ -153,13 +153,13 @@ const resetFilters = () => {
 
 const getStatusBadgeClass = (status) => {
     switch (status) {
-        case 'active': return 'bg-green-100 text-green-700 border-green-200';
-        case 'maintenance': return 'bg-amber-100 text-amber-700 border-amber-200';
-        case 'damaged': return 'bg-red-100 text-red-700 border-red-200';
-        case 'retired': return 'bg-gray-100 text-gray-700 border-gray-200';
-        case 'donated': return 'bg-purple-100 text-purple-700 border-purple-200';
-        case 'lost': return 'bg-slate-800 text-white border-slate-900';
-        default: return 'bg-gray-100 text-gray-700 border-gray-200';
+        case 'active': return 'badge-success';
+        case 'maintenance': return 'badge-warning';
+        case 'damaged': return 'badge-danger';
+        case 'retired': return 'badge-neutral';
+        case 'donated': return 'badge-primary';
+        case 'lost': return 'bg-slate-800 text-white border-slate-900 badge-base';
+        default: return 'badge-neutral';
     }
 };
 
@@ -197,17 +197,23 @@ const onDrop = async (event, deptId) => {
 
     if (!assetId || !deptId) return;
 
-    if (confirm(`Are you sure you want to transfer this asset?`)) {
-        try {
-            await axios.post(route('assets.transfer', assetId), {
-                department_id: deptId,
-                reason: 'Department transfer via Drag & Drop'
-            });
-            router.reload({ only: ['assets'] });
-        } catch (error) {
-            alert(error.response?.data?.message || 'Failed to transfer asset.');
+    window.showConfirm({
+        title: 'Transfer Asset Ownership?',
+        message: 'Are you sure you want to reassign this asset to a different department? This will be logged in the movement history.',
+        confirmText: 'Transfer',
+        onConfirm: async () => {
+            try {
+                await axios.post(route('assets.transfer', assetId), {
+                    department_id: deptId,
+                    reason: 'Department transfer via Drag & Drop'
+                });
+                router.reload({ only: ['assets'] });
+                window.showToast('success', 'Asset ownership transferred.');
+            } catch (error) {
+                window.showToast('error', error.response?.data?.message || 'Transfer failed.');
+            }
         }
-    }
+    });
 };
 
 const expandedAssets = ref([]);
@@ -221,39 +227,27 @@ const toggleExpand = (assetId) => {
 };
 
 // Deletion Logic
-const showDeleteModal = ref(false);
-const assetToDelete = ref(null);
-const isDeleting = ref(false);
-
 const confirmDeletion = (asset) => {
-    assetToDelete.value = asset;
-    showDeleteModal.value = true;
+    window.showConfirm({
+        title: 'Archive Asset Record?',
+        message: `Are you sure you want to archive ${asset.asset_code}? This will remove it from active inventory while preserving history for audit compliance.`,
+        confirmText: 'Archive Asset',
+        confirmVariant: 'danger',
+        onConfirm: () => executeDelete(asset.id),
+    });
 };
 
-const closeDeleteModal = () => {
-    showDeleteModal.value = false;
-    assetToDelete.value = null;
-};
-
-const executeDelete = async () => {
-    if (!assetToDelete.value || isDeleting.value) return;
-
-    isDeleting.value = true;
+const executeDelete = async (id) => {
     try {
-        const response = await axios.delete(route('assets.destroy', assetToDelete.value.id));
-
-        // Refresh the page data via Inertia to ensure list is updated and flash messages are handled
+        await axios.delete(route('assets.destroy', id));
         router.reload({
             only: ['assets'],
             onSuccess: () => {
-                closeDeleteModal();
-                isDeleting.value = false;
+                window.showToast('success', 'Asset successfully archived.');
             }
         });
     } catch (error) {
-        const msg = error.response?.data?.error || 'Failed to archive asset record.';
-        alert(msg);
-        isDeleting.value = false;
+        window.showToast('error', error.response?.data?.error || 'Failed to archive asset.');
     }
 };
 
@@ -283,15 +277,16 @@ onMounted(async () => {
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-2xl font-black leading-tight text-gray-900 uppercase tracking-tight">
+                    <h2 class="text-2xl font-bold leading-tight text-slate-800 tracking-tight">
                         Asset Inventory
                     </h2>
-                    <p class="mt-1 text-xs font-bold text-gray-400 uppercase tracking-widest">Global Asset Governance &
-                        Life-cycle Management</p>
+                    <p class="mt-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        Global Asset Governance & Life-cycle Management
+                    </p>
                 </div>
                 <div class="flex gap-3">
                     <AppButton v-if="can('asset-create')" :href="route('assets.create')" variant="primary"
-                        class="rounded-xl shadow-premium px-6">
+                        class="!rounded-xl shadow-premium px-6">
                         <template #icon>
                             <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
@@ -307,17 +302,17 @@ onMounted(async () => {
         <div class="py-8">
             <div class="space-y-6">
 
-                <!-- Advanced Filtering Bar (Enterprise Grid) -->
-                <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+                <!-- Advanced Filtering Bar -->
+                <div class="bg-white border border-slate-200 rounded-3xl p-7 shadow-soft space-y-6">
                     <!-- Row 1: Search & Type -->
-                    <div class="flex flex-col md:flex-row items-end gap-4">
+                    <div class="flex flex-col md:flex-row items-end gap-5">
                         <div class="flex-1 w-full">
-                            <label class="form-group-label">Global Search</label>
+                            <label class="label-enterprise">Global Search</label>
                             <div class="relative group">
-                                <TextInput v-model="filterForm.search" type="text" class="w-full !pl-11"
+                                <TextInput v-model="filterForm.search" type="text" class="w-full !pl-12"
                                     placeholder="Search by code, room, or category..." />
                                 <div
-                                    class="absolute inset-y-0 left-4 flex items-center text-gray-400 group-focus-within:text-primary transition-colors">
+                                    class="absolute inset-y-0 left-4 flex items-center text-slate-300 group-focus-within:text-[#3d4adb] transition-colors">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -326,8 +321,8 @@ onMounted(async () => {
                             </div>
                         </div>
 
-                        <div class="w-full md:w-64">
-                            <label class="form-group-label">Asset Classification</label>
+                        <div class="w-full md:w-72">
+                            <label class="label-enterprise">Classification</label>
                             <select v-model="filterForm.asset_type" class="w-full">
                                 <option value="">Global Hierarchy</option>
                                 <option value="individual">Standalone Items</option>
@@ -337,56 +332,56 @@ onMounted(async () => {
                         </div>
 
                         <button @click="resetFilters"
-                            class="h-[44px] px-6 rounded-[10px] border border-gray-200 bg-white text-[12px] font-black text-gray-500 hover:bg-gray-50 hover:text-primary transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+                            class="h-[44px] px-6 rounded-xl border border-slate-200 bg-white text-[11px] font-bold text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all uppercase tracking-widest flex items-center justify-center gap-2">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
                                 </path>
                             </svg>
-                            Reset
+                            Clear Filters
                         </button>
                     </div>
 
                     <!-- Row 2: Location & Category -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         <div>
-                            <label class="form-group-label">Building / Zone</label>
+                            <label class="label-enterprise">Building</label>
                             <select v-model="filterForm.building_id" class="w-full">
                                 <option value="">All Buildings</option>
                                 <option v-for="b in meta.buildings" :key="b.id" :value="b.id">{{ b.name }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="form-group-label">Room / Precise Area</label>
+                            <label class="label-enterprise">Location / Room</label>
                             <select v-model="filterForm.room_id" :disabled="!filterForm.building_id" class="w-full">
                                 <option value="">All Rooms</option>
                                 <option v-for="r in rooms" :key="r.id" :value="r.id">{{ r.name }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="form-group-label">Main Category</label>
+                            <label class="label-enterprise">Category</label>
                             <select v-model="filterForm.category_id" class="w-full">
                                 <option value="">All Categories</option>
                                 <option v-for="c in meta.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="form-group-label">Lifecycle Status</label>
+                            <label class="label-enterprise">System Status</label>
                             <select v-model="filterForm.statuses[0]" class="w-full">
                                 <option value="">All Statuses</option>
-                                <option value="active">Active (Working)</option>
+                                <option value="active">Active (Functional)</option>
                                 <option value="maintenance">Maintenance</option>
                                 <option value="damaged">Damaged</option>
                                 <option value="retired">Retired</option>
                                 <option value="lost">Lost</option>
                             </select>
                         </div>
-                        <div v-if="filterForm.category_id" class="animate-in fade-in slide-in-from-top-2 duration-300">
-                             <label class="form-group-label">Specific Sub-category</label>
-                             <select v-model="filterForm.sub_category_id" class="w-full border-primary/30">
-                                 <option value="">All {{ filterForm.category_id ? meta.categories.find(c => c.id === filterForm.category_id)?.name : 'Sub-categories' }}</option>
-                                 <option v-for="sc in subCategories" :key="sc.id" :value="sc.id">{{ sc.name }}</option>
-                             </select>
+                        <div v-if="filterForm.category_id">
+                            <label class="label-enterprise">Sub-category</label>
+                            <select v-model="filterForm.sub_category_id" class="w-full !border-[#3d4adb]/30">
+                                <option value="">All {{ meta.categories.find(c => c.id === filterForm.category_id)?.name }} Sub-categories</option>
+                                <option v-for="sc in subCategories" :key="sc.id" :value="sc.id">{{ sc.name }}</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -431,17 +426,16 @@ onMounted(async () => {
                         </div>
 
                         <div v-else class="space-y-6">
-                            <div class="overflow-x-auto rounded-3xl border border-gray-100 bg-white shadow-premium">
-                                <table class="min-w-full divide-y divide-gray-100 text-sm">
+                            <div class="table-container">
+                                <table class="ent-table">
                                     <thead>
-                                        <tr
-                                            class="bg-gray-50/80 text-left text-[11px] font-bold uppercase tracking-widest text-[#6B7280] border-b border-gray-200">
-                                            <th class="px-6 py-4">Visual</th>
-                                            <th class="px-6 py-4">Identification / Code</th>
-                                            <th class="px-6 py-4">Placement / Owner</th>
-                                            <th class="px-6 py-4">Status & Quality</th>
-                                            <th class="px-6 py-4">Created Info</th>
-                                            <th class="px-6 py-4 text-right">Ops</th>
+                                        <tr>
+                                            <th class="!w-16">Item</th>
+                                            <th>Identifier & Label</th>
+                                            <th>Location</th>
+                                            <th>Governance</th>
+                                            <th>History</th>
+                                            <th class="text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-50">
@@ -449,11 +443,11 @@ onMounted(async () => {
                                             <tr
                                                 class="group border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
                                                 <td class="px-6 py-4">
-                                                    <div class="h-12 w-12 rounded-lg border border-gray-100 bg-gray-50 overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-[#1FA6A0] transition-all"
+                                                    <div class="h-12 w-12 rounded-xl border border-slate-100 bg-slate-50 overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-[#3d4adb] transition-all"
                                                         @click="showImagePreview(asset.image_url)">
                                                         <img v-if="asset.image_url" :src="asset.image_url"
                                                             class="h-full w-full object-cover" />
-                                                        <svg v-else class="h-6 w-6 text-gray-300" fill="none"
+                                                        <svg v-else class="h-6 w-6 text-slate-300" fill="none"
                                                             stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                                 stroke-width="2"
@@ -467,9 +461,9 @@ onMounted(async () => {
                                                             <div class="flex flex-col gap-1">
                                                                 <div class="flex items-center gap-2">
                                                                     <Link :href="route('assets.show', asset.id)"
-                                                                        class="text-[14px] font-bold text-[#1F2937] hover:text-[#1FA6A0] leading-tight">
+                                                                        class="text-[14px] font-bold text-slate-800 hover:text-[#3d4adb] leading-tight">
                                                                         {{ asset.category || 'General Asset' }}
-                                                                        <span v-if="asset.subCategory" class="text-gray-400 font-medium ml-1">— {{ asset.subCategory }}</span>
+                                                                        <span v-if="asset.subCategory" class="text-slate-400 font-medium ml-1">— {{ asset.subCategory }}</span>
                                                                     </Link>
 
                                                                     <div v-if="asset.is_parent"
@@ -536,7 +530,7 @@ onMounted(async () => {
                                                 <td class="px-6 py-4 text-right">
                                                     <div class="flex justify-end gap-2 px-2">
                                                         <Link :href="route('assets.show', asset.id)"
-                                                            class="px-3 py-1.5 rounded-lg border border-gray-100 text-[10px] font-black uppercase tracking-widest text-[#1FA6A0] hover:bg-[#1FA6A0] hover:text-white transition-all shadow-sm">
+                                                            class="px-3 py-1.5 rounded-lg border border-slate-100 text-[10px] font-black uppercase tracking-widest text-[#3d4adb] hover:bg-[#3d4adb] hover:text-white transition-all shadow-sm">
                                                             Verify</Link>
                                                         <Link v-if="can('asset-edit')"
                                                             :href="route('assets.edit', asset.id)"
@@ -562,7 +556,7 @@ onMounted(async () => {
                                                 <tr v-for="child in asset.children" :key="'child-' + child.id"
                                                     class="bg-gray-50/20 border-b border-gray-100">
                                                     <td class="px-6 py-2 flex justify-center">
-                                                        <div class="h-8 w-8 rounded border border-gray-200 bg-white overflow-hidden flex items-center justify-center shadow-xs cursor-pointer hover:ring-2 hover:ring-[#1FA6A0] transition-all"
+                                                        <div class="h-8 w-8 rounded border border-gray-200 bg-white overflow-hidden flex items-center justify-center shadow-xs cursor-pointer hover:ring-2 hover:ring-[#3d4adb] transition-all"
                                                             @click="showImagePreview(child.image_url)">
                                                             <img v-if="child.image_url" :src="child.image_url"
                                                                 class="h-full w-full object-cover" />
@@ -582,7 +576,7 @@ onMounted(async () => {
                                                         <div class="flex flex-col gap-1">
                                                             <div class="flex items-center gap-2">
                                                                 <Link :href="route('assets.show', child.id)"
-                                                                    class="text-[11px] font-bold text-[#1F2937] hover:text-[#1FA6A0] truncate">
+                                                                    class="text-[11px] font-bold text-[#1F2937] hover:text-[#3d4adb] truncate">
                                                                     {{ child.name }}
                                                                 </Link>
                                                                  <span v-if="child.bundle_serial" class="series-badge !text-[11px] !px-2 !py-0.5">
@@ -620,7 +614,7 @@ onMounted(async () => {
                                                     </td>
                                                     <td class="px-6 py-2 text-right">
                                                         <Link :href="route('assets.show', child.id)"
-                                                            class="text-[10px] font-bold text-[#1FA6A0] hover:underline uppercase">
+                                                            class="text-[10px] font-bold text-[#3d4adb] hover:underline uppercase">
                                                             Details</Link>
                                                     </td>
                                                 </tr>
@@ -640,36 +634,32 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <!-- Transfer Sidebar (Same as before but polished) -->
                     <div v-if="(isSuperAdmin || isAssetManager) && meta.departments.length > 0" class="w-full lg:w-80">
                         <div
-                            class="sticky top-8 rounded-3xl border border-gray-100 bg-white p-8 shadow-premium ring-4 ring-gray-50/50">
+                            class="sticky top-8 rounded-[32px] border border-slate-200 bg-white p-8 shadow-premium">
                             <h3
-                                class="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center">
-                                <svg class="mr-2 h-4 w-4 text-primary" fill="none" stroke="currentColor"
+                                class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-8 flex items-center">
+                                <svg class="mr-3 h-4 w-4 text-[#3d4adb]" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
                                         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
                                 Transfer Hub
                             </h3>
-                            <p class="text-xs text-gray-400 mb-8 font-medium leading-relaxed">Drag an asset into a
-                                department
-                                below to reassign ownership instantly.</p>
+                            <p class="text-[11px] text-slate-400 mb-8 font-medium leading-relaxed uppercase tracking-tighter">Drag an asset into a department below to reassign ownership.</p>
 
                             <div class="space-y-3">
                                 <div v-for="dept in meta.departments" :key="dept.id" class="relative group"
                                     @dragover="onDragOver($event, dept.id)" @drop="onDrop($event, dept.id)">
                                     <div class="flex items-center justify-between rounded-2xl border p-4 transition-all duration-300"
-                                        :class="[dropTargetDeptId === dept.id ? 'border-primary bg-primary/5 scale-105 shadow-inner' : 'border-transparent bg-gray-50/50 hover:bg-white hover:border-gray-200 hover:shadow-soft']">
+                                        :class="[dropTargetDeptId === dept.id ? 'border-[#3d4adb] bg-[#3d4adb]/5 scale-[1.02] shadow-inner' : 'border-transparent bg-slate-50/50 hover:bg-white hover:border-slate-200 hover:shadow-soft']">
                                         <div class="flex items-center gap-4 overflow-hidden">
                                             <div
-                                                class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm transition-transform group-hover:rotate-12">
-                                                <span class="text-xs font-black text-primary">{{ dept.name.substring(0,
-                                                    2).toUpperCase() }}</span>
+                                                class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white border border-slate-100 shadow-sm transition-transform group-hover:scale-110">
+                                                <span class="text-xs font-bold text-[#3d4adb]">{{ dept.name.substring(0, 2).toUpperCase() }}</span>
                                             </div>
                                             <span
-                                                class="truncate text-xs font-black text-gray-700 uppercase tracking-tighter">{{
+                                                class="truncate text-xs font-bold text-slate-700 uppercase tracking-tighter">{{
                                                 dept.name }}</span>
                                         </div>
                                     </div>
@@ -703,69 +693,22 @@ onMounted(async () => {
         </div>
     </Teleport>
 
-    <!-- Delete Confirmation Modal -->
-    <Modal :show="showDeleteModal" @close="closeDeleteModal" max-width="md">
-        <div class="p-8">
-            <div class="flex items-center gap-4 mb-6">
-                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">Archive Asset?</h3>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Enterprise Deletion
-                        Protocol
-                    </p>
-                </div>
-            </div>
-
-            <div class="space-y-4 rounded-2xl bg-gray-50 p-5 border border-gray-100">
-                <p class="text-[13px] font-medium text-gray-600 leading-relaxed">
-                    You are about to archive asset <span class="font-mono font-bold text-primary">{{
-                        assetToDelete?.asset_code }}</span>.
-                    This will remove the item from active inventory but keep the record in the database for audit
-                    compliance.
-                </p>
-                <div class="flex items-start gap-3 p-3 rounded-xl bg-white border border-gray-200">
-                    <svg class="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p class="text-[11px] font-bold text-gray-500 leading-normal">Recycle Bin Policy: This asset can be
-                        restored later by an administrator with Audit permissions.</p>
-                </div>
-            </div>
-
-            <div class="mt-8 flex justify-end gap-3">
-                <SecondaryButton @click="closeDeleteModal" class="px-6 !rounded-xl">
-                    Cancel
-                </SecondaryButton>
-                <DangerButton @click="executeDelete" :disabled="isDeleting"
-                    class="px-8 !rounded-xl shadow-lg shadow-rose-200 hover:shadow-rose-300 transition-all font-black uppercase tracking-widest text-[11px]">
-                    {{ isDeleting ? 'Archiving...' : 'Delete Asset' }}
-                </DangerButton>
-            </div>
-        </div>
-    </Modal>
 </template>
 
 <style scoped>
 .series-badge {
-    background: #1FA6A0;
+    background: #3d4adb;
     color: white;
-    font-size: 14px;
+    font-size: 13px;
     padding: 3px 10px;
-    border-radius: 8px;
-    margin-left: 6px;
+    border-radius: 9px;
+    margin-left: 8px;
     font-weight: 800;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(31, 166, 160, 0.2);
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    letter-spacing: -0.02em;
+    box-shadow: 0 4px 12px rgba(61, 74, 219, 0.2);
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.01em;
 }
 </style>

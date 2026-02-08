@@ -30,6 +30,7 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $validatedData = $request->validated();
+        unset($validatedData['image']);
 
         if ($request->hasFile('image')) {
             // Delete old image if exists

@@ -94,6 +94,7 @@ class LocationsController extends Controller
     public function update(UpdateLocationRequest $request, Location $location)
     {
         $data = $request->validated();
+        unset($data['image']);
 
         if ($request->hasFile('image')) {
             $data['image'] = $this->fileService->updateFile($request->file('image'), 'locations', $location->image);

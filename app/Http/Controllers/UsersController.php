@@ -75,7 +75,7 @@ class UsersController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'string', 'lowercase', 'email:rfc', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'department_ids' => ['array'],
@@ -160,7 +160,7 @@ class UsersController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email:rfc,dns', 'max:255', 'unique:users,email,'.$user->id],
+            'email' => ['required', 'string', 'lowercase', 'email:rfc', 'max:255', 'unique:users,email,'.$user->id],
             'password' => ['nullable', 'string', 'min:6'],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'department_ids' => ['array'],

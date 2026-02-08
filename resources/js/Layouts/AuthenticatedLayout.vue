@@ -22,7 +22,7 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
 <template>
     <div class="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased selection:bg-[#3d4adb]/10 selection:text-[#3d4adb]">
         <div class="flex h-screen overflow-hidden">
-            <!-- Global Sidebar (Desktop) -->
+            <!-- Global Sidebwar (Desktop) -->
             <Sidebar class="hidden lg:flex" />
 
             <!-- Main Content Area -->

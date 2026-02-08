@@ -43,7 +43,7 @@ class ImageOptimizationService
             $path = $file->store($folder, 'public');
             $paths['full'] = $path;
             if ($generateThumbnail) {
-                $paths['thumbnail'] = $path; // No thumbnail, just original
+                $paths['thumbnail'] = $path; // Noo thumbnail, just original
             }
         }
         

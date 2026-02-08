@@ -5,6 +5,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
 
 const props = defineProps({
     department: {
@@ -145,11 +146,10 @@ const submit = () => {
                             >
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-3">
-                                        <input
-                                            type="checkbox"
+                                        <GlobalCheckbox
                                             :checked="member.is_member"
-                                            :disabled="!can('department-assign-users')"
-                                            @change="toggleMember(member)"
+                                            :id="'member-' + member.user_id"
+                                            @update:checked="toggleMember(member)"
                                         />
                                         <div>
                                             <p class="text-gray-800">
@@ -187,10 +187,9 @@ const submit = () => {
                                 </td>
                                 <td class="px-4 py-3">
                                     <label class="flex items-center gap-2 text-sm text-gray-600">
-                                        <input
-                                            type="checkbox"
-                                            v-model="member.is_default"
-                                            :disabled="!member.is_member || !can('department-assign-users')"
+                                        <GlobalCheckbox
+                                            v-model:checked="member.is_default"
+                                            :id="'default-' + member.user_id"
                                         />
                                         Default for this user
                                     </label>

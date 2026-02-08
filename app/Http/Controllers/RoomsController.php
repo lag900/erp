@@ -121,4 +121,15 @@ class RoomsController extends Controller
 
         return redirect()->route('rooms.index');
     }
+    public function getByBuilding(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $buildingId = $request->query('building_id');
+        if (!$buildingId) return response()->json([]);
+
+        $rooms = Room::whereHas('level', fn($q) => $q->where('building_id', $buildingId))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json($rooms);
+    }
 }

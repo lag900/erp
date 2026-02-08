@@ -95,6 +95,39 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::delete('/assets/{asset}', [AssetsController::class, 'destroy'])
         ->middleware('permission:asset-delete')
         ->name('assets.destroy');
+    Route::post('/assets/{asset}/transfer', [AssetsController::class, 'transfer'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.transfer');
+    Route::patch('/assets/{asset}/status', [AssetsController::class, 'updateStatus'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.update-status');
+    Route::patch('/assets/{asset}/sharing', [AssetsController::class, 'updateSharing'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.update-sharing');
+    Route::post('/assets/{asset}/components', [AssetsController::class, 'storeComponents'])
+        ->middleware('permission:asset-create')
+        ->name('assets.store-components');
+    Route::get('/assets/{asset}/components', [AssetsController::class, 'addComponents'])
+        ->middleware('permission:asset-create')
+        ->name('assets.add-components');
+    Route::get('/assets/{asset}/group', [AssetsController::class, 'manageGroup'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.group.manage');
+    Route::put('/assets/{asset}/group', [AssetsController::class, 'updateGroup'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.group.update');
+    Route::post('/assets/{asset}/attach', [AssetsController::class, 'attachComponent'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.attach');
+    Route::post('/assets/{asset}/components', [AssetsController::class, 'storeComponent'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.components.store');
+    Route::delete('/assets/{asset}/detach', [AssetsController::class, 'detachComponent'])
+        ->middleware('permission:asset-edit')
+        ->name('assets.detach');
+    Route::get('/api/assets/search', [AssetsController::class, 'searchAssets'])
+        ->middleware('permission:asset-list')
+        ->name('api.assets.search');
 
     Route::get('/locations', [LocationsController::class, 'index'])
         ->middleware('permission:location-list')
@@ -105,6 +138,9 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::post('/locations', [LocationsController::class, 'store'])
         ->middleware('permission:location-create')
         ->name('locations.store');
+    Route::get('/locations/{location}', [LocationsController::class, 'show'])
+        ->middleware('permission:location-list')
+        ->name('locations.show');
     Route::get('/locations/{location}/edit', [LocationsController::class, 'edit'])
         ->middleware('permission:location-edit')
         ->name('locations.edit');
@@ -124,6 +160,9 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::post('/buildings', [BuildingsController::class, 'store'])
         ->middleware('permission:building-create')
         ->name('buildings.store');
+    Route::get('/buildings/{building}', [BuildingsController::class, 'show'])
+        ->middleware('permission:building-list')
+        ->name('buildings.show');
     Route::get('/buildings/{building}/edit', [BuildingsController::class, 'edit'])
         ->middleware('permission:building-edit')
         ->name('buildings.edit');
@@ -152,6 +191,7 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::delete('/rooms/{room}', [RoomsController::class, 'destroy'])
         ->middleware('permission:room-delete')
         ->name('rooms.destroy');
+    Route::get('/api/rooms', [RoomsController::class, 'getByBuilding'])->name('api.rooms');
 
     Route::get('/levels', [LevelsController::class, 'index'])
         ->middleware('permission:level-list')
@@ -190,6 +230,10 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::delete('/categories/{category}', [CategoriesController::class, 'destroy'])
         ->middleware('permission:category-delete')
         ->name('categories.destroy');
+    Route::get('/api/categories/{category}/spec-templates', [CategoriesController::class, 'getSpecTemplates'])
+        ->name('api.categories.spec-templates');
+    Route::post('/api/categories/{category}/rename-spec-template', [CategoriesController::class, 'renameSpecTemplate'])
+        ->name('api.categories.rename-spec-template');
 
     Route::get('/subcategories', [SubCategoriesController::class, 'index'])
         ->middleware('permission:sub_category-list')
@@ -209,7 +253,29 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::delete('/subcategories/{subCategory}', [SubCategoriesController::class, 'destroy'])
         ->middleware('permission:sub_category-delete')
         ->name('subcategories.destroy');
+    Route::get('/api/subcategories', [SubCategoriesController::class, 'getByCategory'])->name('api.sub-categories');
 
+    // Moving users routes out of assets feature group to a dedicated super_admin group
+});
+
+Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:reports'])->group(function () {
+        Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('permission:report-access')->name('reports.index');
+    Route::get('/reports/{type}', [\App\Http\Controllers\ReportController::class, 'view'])->middleware('permission:report-access')->name('reports.view');
+});
+
+// Administration Units - Restricted to SuperAdmin or specific permissions
+Route::middleware(['auth', 'verified', 'role:SuperAdmin|Admin'])->group(function () {
+    Route::resource('administration', \App\Http\Controllers\AdministrationUnitsController::class)->names([
+        'index' => 'administration.index',
+        'create' => 'administration.create',
+        'store' => 'administration.store',
+        'edit' => 'administration.edit',
+        'update' => 'administration.update',
+        'destroy' => 'administration.destroy',
+    ]);
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/users', [UsersController::class, 'index'])
         ->middleware('permission:user-list')
         ->name('users.index');
@@ -263,6 +329,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:feature-toggle')
         ->name('departments.features.update');
 
+    Route::get('/departments/{department}/branding', [\App\Http\Controllers\DepartmentBrandingController::class, 'edit'])
+        ->middleware('permission:branding-manage')
+        ->name('departments.branding');
+    Route::post('/departments/{department}/branding', [\App\Http\Controllers\DepartmentBrandingController::class, 'update'])
+        ->middleware('permission:branding-manage')
+        ->name('departments.branding.update');
+
     Route::get('/roles', [RolesController::class, 'index'])
         ->middleware('permission:role-list')
         ->name('roles.index');
@@ -291,9 +364,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/permissions', [PermissionsController::class, 'store'])
         ->middleware('permission:permission-create')
         ->name('permissions.store');
+    Route::patch('/permissions/{permission}/move', [PermissionsController::class, 'move'])
+        ->middleware('permission:permission-edit')
+        ->name('permissions.move');
+    Route::post('permissions/bulk-assign', [PermissionsController::class, 'bulkAssign'])
+        ->middleware('permission:permission-edit')
+        ->name('permissions.bulk-assign');
+    Route::post('permissions/bulk-remove', [PermissionsController::class, 'bulkRemove'])
+        ->middleware('permission:permission-edit')
+        ->name('permissions.bulk-remove');
+    Route::post('permissions/bulk-move', [PermissionsController::class, 'bulkMove'])
+        ->middleware('permission:permission-edit')
+        ->name('permissions.bulk-move');
     Route::delete('/permissions/{permission}', [PermissionsController::class, 'destroy'])
         ->middleware('permission:permission-delete')
         ->name('permissions.destroy');
+
+    // Permission Groups Management
+    Route::resource('permission-groups', \App\Http\Controllers\PermissionGroupsController::class)
+        ->only(['store', 'update', 'destroy'])
+        ->middleware('permission:permission-create');
 });
 
 require __DIR__.'/auth.php';

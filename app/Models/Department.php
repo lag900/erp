@@ -13,8 +13,11 @@ class Department extends Model
 
     protected $fillable = [
         'name',
+        'arabic_name',
         'code',
         'description',
+        'university_logo',
+        'department_logo',
     ];
 
     public function users(): BelongsToMany
@@ -34,5 +37,20 @@ class Department extends Model
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class)->withTimestamps();
+    }
+
+    public function getUniversityLogoUrlAttribute(): ?string
+    {
+        return $this->university_logo ? asset('storage/' . $this->university_logo) : null;
+    }
+
+    public function getDepartmentLogoUrlAttribute(): ?string
+    {
+        return $this->department_logo ? asset('storage/' . $this->department_logo) : null;
     }
 }

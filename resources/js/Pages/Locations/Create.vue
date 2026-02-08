@@ -6,12 +6,33 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
+import imageCompression from 'browser-image-compression';
 
 const form = useForm({
     name: '',
     description: '',
     image: null,
 });
+
+const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        initialQuality: 0.8
+    };
+
+    try {
+        const compressedFile = await imageCompression(file, options);
+        form.image = compressedFile;
+    } catch (error) {
+        console.error('Image compression failed:', error);
+        form.image = file;
+    }
+};
 const page = usePage();
 const permissions = computed(() => page.props.auth?.permissions ?? []);
 const can = (permission) => permissions.value.includes(permission);
@@ -94,8 +115,9 @@ const can = (permission) => permissions.value.includes(permission);
                                                 id="image"
                                                 type="file"
                                                 accept="image/*"
+                                                capture="environment"
                                                 class="sr-only"
-                                                @input="form.image = $event.target.files[0]"
+                                                @change="handleImageUpload"
                                             />
                                         </label>
                                         <p class="pl-1">or drag and drop</p>

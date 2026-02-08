@@ -7,6 +7,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import DangerButton from '@/Components/DangerButton.vue';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
 
 const props = defineProps({
     user: {
@@ -36,18 +37,7 @@ const form = useForm({
     default_department_id: props.user.default_department_id || '',
 });
 
-const toggleDepartment = (departmentId) => {
-    const existing = form.department_ids.includes(departmentId);
-    if (existing) {
-        form.department_ids = form.department_ids.filter((id) => id !== departmentId);
-        if (form.default_department_id === departmentId) {
-            form.default_department_id = '';
-        }
-        return;
-    }
-
-    form.department_ids = [...form.department_ids, departmentId];
-};
+// Reactivity is handled by Checkbox v-model:checked binding to form.department_ids array
 
 const availableDefaultDepartments = computed(() => {
     return props.departments.filter((department) =>
@@ -87,7 +77,9 @@ const availableDefaultDepartments = computed(() => {
             <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
                 <form
                     class="rounded bg-white p-6 shadow"
-                    @submit.prevent="form.put(route('users.update', user.id))"
+                    @submit.prevent="form.put(route('users.update', user.id), {
+                        onSuccess: () => window.showToast('success', 'User updated successfully')
+                    })"
                 >
                     <div class="grid gap-6 sm:grid-cols-2">
                         <div>
@@ -137,22 +129,42 @@ const availableDefaultDepartments = computed(() => {
                     </div>
 
                     <div class="mt-8">
-                        <h3 class="text-lg font-semibold text-gray-800">
-                            Departments Access
-                        </h3>
-                        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-gray-500">
+                                Department Access
+                            </h3>
+                            <span class="text-xs font-medium text-gray-400">
+                                {{ form.department_ids.length }} Selected
+                            </span>
+                        </div>
+                        
+                        <div class="mt-4 grid gap-4 sm:grid-cols-2">
                             <label
                                 v-for="department in departments"
                                 :key="department.id"
-                                class="flex items-center gap-2 rounded border border-gray-200 p-3 text-sm text-gray-700"
+                                :class="[
+                                    'flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition-all duration-200',
+                                    form.department_ids.includes(department.id)
+                                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                        : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+                                ]"
                             >
-                                <input
-                                    type="checkbox"
+                                <div class="flex items-center space-x-3">
+                                    <div 
+                                        :class="[
+                                            'flex h-10 w-10 items-center justify-center rounded-lg text-lg font-bold transition-colors',
+                                            form.department_ids.includes(department.id) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'
+                                        ]"
+                                    >
+                                        {{ department.name.charAt(0) }}
+                                    </div>
+                                    <span class="font-semibold text-gray-700">{{ department.name }}</span>
+                                </div>
+                                
+                                <GlobalCheckbox
                                     :value="department.id"
-                                    :checked="form.department_ids.includes(department.id)"
-                                    @change="toggleDepartment(department.id)"
+                                    v-model:checked="form.department_ids"
                                 />
-                                {{ department.name }}
                             </label>
                         </div>
                         <InputError class="mt-2" :message="form.errors.department_ids" />

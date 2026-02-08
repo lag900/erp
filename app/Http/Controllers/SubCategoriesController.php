@@ -2,31 +2,36 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreSubCategoryRequest;
+use App\Http\Requests\UpdateSubCategoryRequest;
 use App\Models\Category;
 use App\Models\SubCategory;
-use Illuminate\Http\RedirectResponse;
+use App\Services\FileService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SubCategoriesController extends Controller
 {
+    protected $fileService;
+
+    public function __construct(FileService $fileService)
+    {
+        $this->fileService = $fileService;
+    }
+
     public function index(Request $request): Response
     {
-        $departmentId = $request->session()->get('selected_department_id');
-
         $subCategories = SubCategory::with('category')
             ->orderBy('name')
             ->get()
-            ->map(function (SubCategory $subCategory) {
-                return [
-                    'id' => $subCategory->id,
-                    'name' => $subCategory->name,
-                    'category' => $subCategory->category?->name,
-                    'image_url' => $subCategory->image_url,
-                ];
-            });
+            ->map(fn (SubCategory $subCategory) => [
+                'id' => $subCategory->id,
+                'name' => $subCategory->name,
+                'code' => $subCategory->code,
+                'category' => $subCategory->category?->name,
+                'image_url' => $subCategory->image_url,
+            ]);
 
         return Inertia::render('SubCategories/Index', [
             'subCategories' => $subCategories,
@@ -44,21 +49,24 @@ class SubCategoriesController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreSubCategoryRequest $request)
     {
-        $data = $request->validate([
-            'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
-        ]);
+        $data = $request->validated();
+
+        // Auto Generate Code if not provided
+        if (empty($data['code'])) {
+            $base = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $data['name']), 0, 3));
+            $count = SubCategory::where('code', 'LIKE', $base . '%')->count();
+            $data['code'] = $count ? $base . ($count + 1) : $base;
+        }
 
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('subcategories', 'public');
+            $data['image'] = $this->fileService->updateFile($request->file('image'), 'subcategories');
         }
 
         SubCategory::create($data);
 
-        return redirect()->route('subcategories.index');
+        return redirect()->route('subcategories.index')->with('success', 'Sub-category created successfully.');
     }
 
     public function edit(SubCategory $subCategory): Response
@@ -71,6 +79,7 @@ class SubCategoriesController extends Controller
             'subCategory' => [
                 'id' => $subCategory->id,
                 'name' => $subCategory->name,
+                'code' => $subCategory->code,
                 'category_id' => $subCategory->category_id,
                 'image_url' => $subCategory->image_url,
             ],
@@ -78,36 +87,43 @@ class SubCategoriesController extends Controller
         ]);
     }
 
-    public function update(Request $request, SubCategory $subCategory): RedirectResponse
+    public function update(UpdateSubCategoryRequest $request, SubCategory $subCategory)
     {
-        $data = $request->validate([
-            'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
-        ]);
+        $data = $request->validated();
 
         if ($request->hasFile('image')) {
-            // Delete old image if exists
-            if ($subCategory->image) {
-                Storage::disk('public')->delete($subCategory->image);
-            }
-            $data['image'] = $request->file('image')->store('subcategories', 'public');
+            $data['image'] = $this->fileService->updateFile($request->file('image'), 'subcategories', $subCategory->image);
         }
 
         $subCategory->update($data);
 
-        return redirect()->route('subcategories.index');
+        return redirect()->route('subcategories.index')->with('success', 'Sub-category updated successfully.');
     }
 
-    public function destroy(SubCategory $subCategory): RedirectResponse
+    public function destroy(SubCategory $subCategory, Request $request)
     {
-        // Delete image if exists
         if ($subCategory->image) {
-            Storage::disk('public')->delete($subCategory->image);
+            $this->fileService->deleteFile($subCategory->image);
         }
 
         $subCategory->delete();
 
-        return redirect()->route('subcategories.index');
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Sub-category deleted successfully.']);
+        }
+
+        return redirect()->route('subcategories.index')->with('success', 'Sub-category deleted successfully.');
+    }
+
+    public function getByCategory(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $categoryId = $request->query('category_id');
+        if (!$categoryId) return response()->json([]);
+
+        $items = SubCategory::where('category_id', $categoryId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return response()->json($items);
     }
 }

@@ -5,10 +5,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
 import Modal from '@/Components/Modal.vue';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
 
 const props = defineProps({
     users: {
@@ -163,16 +161,18 @@ const getRoleBadgeClass = (role) => {
                         Manage organizational access, roles, and department permissions.
                     </p>
                 </div>
-                <PrimaryButton
+                <AppButton
                     v-if="can('user-create')"
+                    variant="primary"
                     @click="openCreateModal"
-                    class="!scale-105"
                 >
-                    <svg class="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
+                    <template #icon>
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </template>
                     New User
-                </PrimaryButton>
+                </AppButton>
             </div>
         </template>
 
@@ -197,22 +197,24 @@ const getRoleBadgeClass = (role) => {
                     <div class="flex items-center gap-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Filter By Role:</span>
                         <div class="flex gap-2">
-                             <button 
+                             <AppButton 
                                 @click="roleFilter = 'all'"
-                                :class="roleFilter === 'all' ? 'bg-primary text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
-                                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+                                :variant="roleFilter === 'all' ? 'primary' : 'secondary'"
+                                size="xs"
+                                class="!px-4"
                             >
                                 All
-                            </button>
-                            <button 
+                            </AppButton>
+                            <AppButton 
                                 v-for="role in roles"
                                 :key="role.id"
                                 @click="roleFilter = role.name"
-                                :class="roleFilter === role.name ? 'bg-primary text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
-                                class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-all"
+                                :variant="roleFilter === role.name ? 'primary' : 'secondary'"
+                                size="xs"
+                                class="!px-4"
                             >
                                 {{ role.name }}
-                            </button>
+                            </AppButton>
                         </div>
                     </div>
                 </div>
@@ -226,13 +228,13 @@ const getRoleBadgeClass = (role) => {
                             </svg>
                         </div>
                         <h3 class="text-lg font-bold text-gray-900">No users match your criteria</h3>
-                        <p class="mx-auto mt-2 max-w-sm text-sm text-gray-500">
+                        <p class="mx-auto mt-2 max-w-sm text-sm text-500">
                             We couldn't find any users matching your current search or filter. Try a different term or create a new user.
                         </p>
                         <div class="mt-8">
-                             <SecondaryButton @click="search = ''; roleFilter = 'all'">
-                                Clear Filters
-                            </SecondaryButton>
+                             <AppButton variant="secondary" @click="search = ''; roleFilter = 'all'">
+                                 Clear Filters
+                             </AppButton>
                         </div>
                     </div>
 
@@ -295,27 +297,35 @@ const getRoleBadgeClass = (role) => {
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        <div class="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
+                                        <div class="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+                                            <AppButton
                                                 v-if="can('user-edit')"
+                                                variant="ghost"
+                                                size="xs"
+                                                class="!p-2 hover:!bg-white"
                                                 @click="openEditModal(user)"
-                                                class="p-2 text-gray-400 hover:text-primary transition-colors hover:bg-white rounded-lg"
                                                 title="Edit User"
                                             >
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </button>
-                                            <button
+                                                <template #icon>
+                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </template>
+                                            </AppButton>
+                                            <AppButton
                                                 v-if="can('user-delete')"
+                                                variant="ghost"
+                                                size="xs"
+                                                class="!p-2 hover:!bg-white hover:!text-rose-500"
                                                 @click="confirmDelete(user)"
-                                                class="p-2 text-gray-400 hover:text-red-500 transition-colors hover:bg-white rounded-lg"
                                                 title="Delete User"
                                             >
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
+                                                <template #icon>
+                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </template>
+                                            </AppButton>
                                         </div>
                                     </td>
                                 </tr>
@@ -334,9 +344,11 @@ const getRoleBadgeClass = (role) => {
                         <h3 class="text-2xl font-black text-gray-900">{{ isCreateModalOpen ? 'Create New User' : 'Edit User Profile' }}</h3>
                         <p class="text-sm text-gray-500 mt-1">Fill in the details below to manage organization access.</p>
                     </div>
-                    <button @click="isCreateModalOpen ? closeCreateModal() : closeEditModal()" class="text-gray-400 hover:text-gray-600 bg-gray-50 p-2 rounded-full">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
+                    <AppButton variant="ghost" size="xs" pill @click="isCreateModalOpen ? closeCreateModal() : closeEditModal()" class="!px-1.5 h-8 w-8 hover:!bg-slate-100">
+                        <template #icon>
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </template>
+                    </AppButton>
                 </div>
 
                 <form @submit.prevent="isCreateModalOpen ? submitCreate() : submitUpdate()" class="space-y-6">
@@ -382,11 +394,10 @@ const getRoleBadgeClass = (role) => {
                                 <InputLabel value="Assigned Departments" />
                                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                     <label v-for="dept in departments" :key="dept.id" class="flex items-center gap-3 cursor-pointer group">
-                                        <input 
-                                            type="checkbox" 
+                                        <GlobalCheckbox 
+                                            :id="'dept-' + dept.id"
                                             :value="dept.id" 
-                                            v-model="form.department_ids"
-                                            class="rounded text-primary focus:ring-primary transition-all scale-110"
+                                            v-model:checked="form.department_ids"
                                         />
                                         <span class="text-sm font-medium text-gray-600 group-hover:text-primary transition-colors">{{ dept.name }}</span>
                                     </label>
@@ -417,12 +428,12 @@ const getRoleBadgeClass = (role) => {
                     </div>
 
                     <div class="flex justify-end gap-3 mt-10">
-                        <SecondaryButton @click="isCreateModalOpen ? closeCreateModal() : closeEditModal()" :disabled="form.processing">
+                        <AppButton variant="secondary" @click="isCreateModalOpen ? closeCreateModal() : closeEditModal()" :disabled="form.processing">
                             Cancel
-                        </SecondaryButton>
-                        <PrimaryButton type="submit" :disabled="form.processing">
+                        </AppButton>
+                        <AppButton type="submit" variant="primary" :processing="form.processing">
                             {{ isCreateModalOpen ? 'Create Account' : 'Save Changes' }}
-                        </PrimaryButton>
+                        </AppButton>
                     </div>
                 </form>
             </div>
@@ -441,12 +452,12 @@ const getRoleBadgeClass = (role) => {
                     Are you sure you want to delete <span class="font-bold text-gray-900">{{ selectedUser?.name }}</span>? This action cannot be undone and will revoke all access immediately.
                 </p>
                 <div class="mt-8 flex flex-col gap-3">
-                    <DangerButton class="w-full justify-center py-3" @click="submitDelete" :disabled="deleteForm.processing">
+                    <AppButton variant="danger" class="w-full justify-center py-3" @click="submitDelete" :processing="deleteForm.processing">
                         Confirm Deletion
-                    </DangerButton>
-                    <SecondaryButton class="w-full justify-center py-3" @click="closeDeleteModal" :disabled="deleteForm.processing">
+                    </AppButton>
+                    <AppButton variant="secondary" class="w-full justify-center py-3" @click="closeDeleteModal" :disabled="deleteForm.processing">
                         Keep Account
-                    </SecondaryButton>
+                    </AppButton>
                 </div>
             </div>
         </Modal>

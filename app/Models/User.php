@@ -23,7 +23,14 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
         'image',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
+        'two_factor_confirmed_at',
+        'two_factor_otp',
+        'two_factor_otp_expires_at',
+        'is_active',
     ];
 
     protected $appends = ['image_url'];
@@ -55,7 +62,51 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Determine if the user has two-factor authentication enabled.
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return !is_null($this->two_factor_confirmed_at);
+    }
+
+    /**
+     * Generate a new OTP for the user.
+     */
+    public function generateOtp(): string
+    {
+        $otp = (string) rand(100000, 999999);
+        $this->update([
+            'two_factor_otp' => $otp,
+            'two_factor_otp_expires_at' => now()->addMinutes(10),
+        ]);
+        return $otp;
+    }
+
+    /**
+     * Verify the provided OTP.
+     */
+    public function verifyOtp(string $otp): bool
+    {
+        if ($this->two_factor_otp !== $otp) {
+            return false;
+        }
+
+        if (now()->gt($this->two_factor_otp_expires_at)) {
+            return false;
+        }
+
+        // Clear OTP after successful verification
+        $this->update([
+            'two_factor_otp' => null,
+            'two_factor_otp_expires_at' => null,
+        ]);
+
+        return true;
     }
 
     public function departments(): BelongsToMany
@@ -70,5 +121,10 @@ class User extends Authenticatable
         return $this->departments()
             ->wherePivot('is_default', true)
             ->first();
+    }
+
+    public function createdAssets(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Asset::class, 'created_by_id');
     }
 }

@@ -8,6 +8,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import EntityImage from '@/Components/EntityImage.vue';
+import imageCompression from 'browser-image-compression';
 
 const props = defineProps({
     building: {
@@ -27,10 +28,31 @@ const can = (permission) => permissions.value.includes(permission);
 const form = useForm({
     _method: 'PUT',
     location_id: props.building.location_id,
-    name: props.building.name,
-    code: props.building.code ?? '',
+    name_en: props.building.name_en,
+    name_ar: props.building.name_ar,
+    is_shared: props.building.is_shared,
     image: null,
 });
+
+const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        initialQuality: 0.8
+    };
+
+    try {
+        const compressedFile = await imageCompression(file, options);
+        form.image = compressedFile;
+    } catch (error) {
+        console.error('Image compression failed:', error);
+        form.image = file;
+    }
+};
 </script>
 
 <template>
@@ -111,24 +133,44 @@ const form = useForm({
                         </div>
 
                         <div>
-                            <InputLabel for="name" value="Building Name" />
+                            <InputLabel for="name_en" value="English Name (Required)" />
                             <TextInput
-                                id="name"
-                                v-model="form.name"
+                                id="name_en"
+                                v-model="form.name_en"
                                 class="mt-1 block w-full"
+                                required
                             />
-                            <InputError class="mt-2" :message="form.errors.name" />
+                            <InputError class="mt-2" :message="form.errors.name_en" />
                         </div>
 
                         <div>
-                            <InputLabel for="code" value="Building Code" />
+                            <InputLabel for="name_ar" value="Arabic Name (Optional)" />
                             <TextInput
-                                id="code"
-                                v-model="form.code"
-                                class="mt-1 block w-full"
+                                id="name_ar"
+                                v-model="form.name_ar"
+                                class="mt-1 block w-full text-right"
+                                dir="rtl"
                             />
-                             <p class="mt-1 text-xs text-gray-500">Optional shorthand code.</p>
-                            <InputError class="mt-2" :message="form.errors.code" />
+                            <InputError class="mt-2" :message="form.errors.name_ar" />
+                        </div>
+
+                        <div class="sm:col-span-2 flex items-center gap-2">
+                             <input 
+                                type="checkbox" 
+                                id="is_shared" 
+                                v-model="form.is_shared"
+                                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                             />
+                             <InputLabel for="is_shared" value="This is a shared building (available across all departments)" />
+                        </div>
+
+
+                        <div>
+                            <InputLabel value="Building Code (Auto-Generated)" />
+                            <div class="mt-2 inline-flex items-center rounded-lg bg-gray-100 px-4 py-2 text-sm font-mono font-bold text-gray-700 border border-gray-200">
+                                {{ building.code || 'AUTO' }}
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">Automatically generated from building name.</p>
                         </div>
 
                         <div class="sm:col-span-2">
@@ -156,8 +198,9 @@ const form = useForm({
                                                     id="image"
                                                     type="file"
                                                     accept="image/*"
+                                                    capture="environment"
                                                     class="sr-only"
-                                                    @input="form.image = $event.target.files[0]"
+                                                    @change="handleImageUpload"
                                                 />
                                             </label>
                                             <p class="pl-1">or drag and drop</p>

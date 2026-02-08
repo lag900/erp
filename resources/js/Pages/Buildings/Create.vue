@@ -6,6 +6,8 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
+import imageCompression from 'browser-image-compression';
 
 const props = defineProps({
     locations: {
@@ -20,10 +22,31 @@ const can = (permission) => permissions.value.includes(permission);
 
 const form = useForm({
     location_id: '',
-    name: '',
-    code: '',
+    name_en: '',
+    name_ar: '',
+    is_shared: false,
     image: null,
 });
+
+const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const options = {
+        maxSizeMB: 1, // Buildings can be a bit higher quality
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        initialQuality: 0.8
+    };
+
+    try {
+        const compressedFile = await imageCompression(file, options);
+        form.image = compressedFile;
+    } catch (error) {
+        console.error('Image compression failed:', error);
+        form.image = file;
+    }
+};
 </script>
 
 <template>
@@ -91,26 +114,35 @@ const form = useForm({
                         </div>
 
                         <div>
-                            <InputLabel for="name" value="Building Name" />
+                            <InputLabel for="name_en" value="English Name (Required)" />
                             <TextInput
-                                id="name"
-                                v-model="form.name"
+                                id="name_en"
+                                v-model="form.name_en"
                                 class="mt-1 block w-full"
                                 placeholder="e.g. Engineering Block A"
+                                required
                             />
-                            <InputError class="mt-2" :message="form.errors.name" />
+                            <InputError class="mt-2" :message="form.errors.name_en" />
                         </div>
 
                         <div>
-                            <InputLabel for="code" value="Building Code" />
+                            <InputLabel for="name_ar" value="Arabic Name (Optional)" />
                             <TextInput
-                                id="code"
-                                v-model="form.code"
-                                class="mt-1 block w-full"
-                                placeholder="e.g. BLD-01"
+                                id="name_ar"
+                                v-model="form.name_ar"
+                                class="mt-1 block w-full text-right"
+                                dir="rtl"
+                                placeholder="مثال: مبنى الهندسة (أ)"
                             />
-                            <p class="mt-1 text-xs text-gray-500">Optional shorthand code.</p>
-                            <InputError class="mt-2" :message="form.errors.code" />
+                            <InputError class="mt-2" :message="form.errors.name_ar" />
+                        </div>
+
+                        <div class="sm:col-span-2 flex items-center gap-2">
+                             <GlobalCheckbox 
+                                id="is_shared" 
+                                v-model:checked="form.is_shared"
+                             />
+                             <InputLabel for="is_shared" value="This is a shared building (available across all departments)" />
                         </div>
 
                         <div class="sm:col-span-2">
@@ -127,8 +159,9 @@ const form = useForm({
                                                 id="image"
                                                 type="file"
                                                 accept="image/*"
+                                                capture="environment"
                                                 class="sr-only"
-                                                @input="form.image = $event.target.files[0]"
+                                                @change="handleImageUpload"
                                             />
                                         </label>
                                         <p class="pl-1">or drag and drop</p>

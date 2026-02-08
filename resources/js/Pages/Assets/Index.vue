@@ -1,201 +1,771 @@
 <script setup>
-import { computed, ref } from 'vue';
-import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch, onMounted } from 'vue';
+import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import TextInput from '@/Components/TextInput.vue';
+import AppButton from '@/Components/AppButton.vue';
+import Pagination from '@/Components/Pagination.vue';
+import throttle from 'lodash/throttle';
+import axios from 'axios';
+import Modal from '@/Components/Modal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue';
 
 const props = defineProps({
-    assets: {
-        type: Array,
-        required: true,
-    },
+    assets: Object, // Paginated object
+    filters: Object,
+    meta: Object, // { buildings, categories, departments, creators }
 });
 
-const search = ref('');
 const page = usePage();
 const permissions = computed(() => page.props.auth?.permissions ?? []);
 const can = (permission) => permissions.value.includes(permission);
+const isSuperAdmin = computed(() => page.props.auth?.user?.roles?.includes('SuperAdmin'));
+const isAssetManager = computed(() => page.props.auth?.user?.roles?.includes('Admin'));
 
-const filteredAssets = computed(() => {
-    const term = search.value.trim().toLowerCase();
+// Dynamic data for sub-filters
+const rooms = ref([]);
+const subCategories = ref([]);
 
-    if (!term) {
-        return props.assets;
-    }
-
-    return props.assets.filter((asset) => {
-        const roomParts = [
-            asset.room?.location,
-            asset.room?.building,
-            asset.room?.level,
-            asset.room?.name,
-            asset.room?.code,
-        ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
-
-        const categoryText = [asset.category, asset.subCategory]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
-
-        const noteText = asset.note ? asset.note.toLowerCase() : '';
-        const serialText = asset.serial_number ? asset.serial_number.toLowerCase() : '';
-        const ownerText = asset.owner_department ? asset.owner_department.toLowerCase() : '';
-
-        return (
-            roomParts.includes(term) ||
-            categoryText.includes(term) ||
-            noteText.includes(term) ||
-            serialText.includes(term) ||
-            ownerText.includes(term)
-        );
-    });
+// Filter State
+const filterForm = ref({
+    search: props.filters.search || '',
+    statuses: props.filters.statuses || [],
+    building_id: props.filters.building_id || '',
+    room_id: props.filters.room_id || '',
+    category_id: props.filters.category_id || '',
+    sub_category_id: props.filters.sub_category_id || '',
+    department_id: props.filters.department_id || '',
+    created_by: props.filters.created_by || '',
+    date_from: props.filters.date_from || '',
+    date_to: props.filters.date_to || '',
+    asset_type: props.filters.asset_type || '',
 });
 
-const getStatusBadgeClass = (condition) => {
-    switch (condition) {
-        case 'active':
-            return 'bg-green-100 text-green-700 border-green-200';
-        case 'maintenance':
-            return 'bg-amber-100 text-amber-700 border-amber-200';
-        case 'damaged':
-            return 'bg-red-100 text-red-700 border-red-200';
-        case 'disposed':
-            return 'bg-gray-100 text-gray-700 border-gray-200';
-        default:
-            return 'bg-gray-100 text-gray-700 border-gray-200';
+const previewImage = ref(null);
+const showImagePreview = (url) => {
+    previewImage.value = url;
+};
+
+// Dropdown states
+const showStatusFilter = ref(false);
+
+const applyFilters = throttle(() => {
+    // 1. Purge empty/null values
+    const clean = {};
+    for (const [key, value] of Object.entries(filterForm.value)) {
+        if (value === null || value === '' || value === undefined) continue;
+        if (Array.isArray(value)) {
+            const validItems = value.filter(v => v !== '' && v !== null);
+            if (validItems.length > 0) clean[key] = validItems;
+        } else {
+            clean[key] = value;
+        }
+    }
+
+    router.get(route('assets.index'), clean, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+}, 500);
+
+watch(() => filterForm.value, () => {
+    applyFilters();
+}, { deep: true });
+
+// Fetch Rooms when Building changes
+watch(() => filterForm.value.building_id, async (newBuildingId) => {
+    if (!newBuildingId) {
+        rooms.value = [];
+        filterForm.value.room_id = '';
+        return;
+    }
+    try {
+        const response = await axios.get(route('api.rooms', { building_id: newBuildingId }));
+        rooms.value = response.data;
+    } catch (e) {
+        console.error('Failed to fetch rooms');
+    }
+});
+
+// Fetch SubCategories when Category changes
+watch(() => filterForm.value.category_id, async (newCategoryId) => {
+    if (!newCategoryId) {
+        subCategories.value = [];
+        filterForm.value.sub_category_id = '';
+        return;
+    }
+    try {
+        const response = await axios.get(route('api.sub-categories', { category_id: newCategoryId }));
+        subCategories.value = response.data;
+    } catch (e) {
+        console.error('Failed to fetch sub-categories');
+    }
+});
+
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (filterForm.value.search) count++;
+    if (filterForm.value.statuses.length > 0) count++;
+    if (filterForm.value.building_id) count++;
+    if (filterForm.value.room_id) count++;
+    if (filterForm.value.category_id) count++;
+    if (filterForm.value.sub_category_id) count++;
+    if (filterForm.value.department_id) count++;
+    if (filterForm.value.created_by) count++;
+    if (filterForm.value.date_from) count++;
+    if (filterForm.value.date_to) count++;
+    return count;
+});
+
+const toggleStatus = (status) => {
+    const index = filterForm.value.statuses.indexOf(status);
+    if (index === -1) {
+        filterForm.value.statuses.push(status);
+    } else {
+        filterForm.value.statuses.splice(index, 1);
     }
 };
 
-const getStatusLabel = (condition) => {
-    switch (condition) {
-        case 'active':
-            return 'Active';
-        case 'maintenance':
-            return 'Maintenance';
-        case 'damaged':
-            return 'Damaged';
-        case 'disposed':
-            return 'Disposed';
-        default:
-            return condition || 'Unknown';
+const resetFilters = () => {
+    filterForm.value = {
+        search: '',
+        statuses: [],
+        building_id: '',
+        room_id: '',
+        category_id: '',
+        sub_category_id: '',
+        department_id: '',
+        created_by: '',
+        date_from: '',
+        date_to: '',
+        asset_type: '',
+    };
+
+    // Force reload with cleared params
+    router.get(route('assets.index'), {}, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+const getStatusBadgeClass = (status) => {
+    switch (status) {
+        case 'active': return 'bg-green-100 text-green-700 border-green-200';
+        case 'maintenance': return 'bg-amber-100 text-amber-700 border-amber-200';
+        case 'damaged': return 'bg-red-100 text-red-700 border-red-200';
+        case 'retired': return 'bg-gray-100 text-gray-700 border-gray-200';
+        case 'donated': return 'bg-purple-100 text-purple-700 border-purple-200';
+        case 'lost': return 'bg-slate-800 text-white border-slate-900';
+        default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
 };
+
+const getStatusLabel = (status) => {
+    const labels = {
+        active: 'Active',
+        maintenance: 'Maintenance',
+        damaged: 'Damaged',
+        retired: 'Retired',
+        donated: 'Donated',
+        lost: 'Lost'
+    };
+    return labels[status] || status || 'Unknown';
+};
+
+// Drag and Drop Logic
+const draggedAssetId = ref(null);
+const dropTargetDeptId = ref(null);
+
+const onDragStart = (event, assetId) => {
+    draggedAssetId.value = assetId;
+    event.dataTransfer.effectAllowed = 'move';
+};
+
+const onDragOver = (event, deptId) => {
+    event.preventDefault();
+    dropTargetDeptId.value = deptId;
+};
+
+const onDrop = async (event, deptId) => {
+    event.preventDefault();
+    const assetId = draggedAssetId.value;
+    draggedAssetId.value = null;
+    dropTargetDeptId.value = null;
+
+    if (!assetId || !deptId) return;
+
+    if (confirm(`Are you sure you want to transfer this asset?`)) {
+        try {
+            await axios.post(route('assets.transfer', assetId), {
+                department_id: deptId,
+                reason: 'Department transfer via Drag & Drop'
+            });
+            router.reload({ only: ['assets'] });
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to transfer asset.');
+        }
+    }
+};
+
+const expandedAssets = ref([]);
+
+const toggleExpand = (assetId) => {
+    if (expandedAssets.value.includes(assetId)) {
+        expandedAssets.value = expandedAssets.value.filter(id => id !== assetId);
+    } else {
+        expandedAssets.value.push(assetId);
+    }
+};
+
+// Deletion Logic
+const showDeleteModal = ref(false);
+const assetToDelete = ref(null);
+const isDeleting = ref(false);
+
+const confirmDeletion = (asset) => {
+    assetToDelete.value = asset;
+    showDeleteModal.value = true;
+};
+
+const closeDeleteModal = () => {
+    showDeleteModal.value = false;
+    assetToDelete.value = null;
+};
+
+const executeDelete = async () => {
+    if (!assetToDelete.value || isDeleting.value) return;
+
+    isDeleting.value = true;
+    try {
+        const response = await axios.delete(route('assets.destroy', assetToDelete.value.id));
+
+        // Refresh the page data via Inertia to ensure list is updated and flash messages are handled
+        router.reload({
+            only: ['assets'],
+            onSuccess: () => {
+                closeDeleteModal();
+                isDeleting.value = false;
+            }
+        });
+    } catch (error) {
+        const msg = error.response?.data?.error || 'Failed to archive asset record.';
+        alert(msg);
+        isDeleting.value = false;
+    }
+};
+
+onMounted(async () => {
+    // Hydrate dependent filters if parent is selected
+    if (filterForm.value.building_id) {
+        try {
+            const res = await axios.get(route('api.rooms', { building_id: filterForm.value.building_id }));
+            rooms.value = res.data;
+        } catch (e) { }
+    }
+
+    if (filterForm.value.category_id) {
+        try {
+            const res = await axios.get(route('api.sub-categories', { category_id: filterForm.value.category_id }));
+            subCategories.value = res.data;
+        } catch (e) { }
+    }
+});
 </script>
 
 <template>
-    <Head title="Assets Management" />
+
+    <Head title="Enterprise Asset Inventory" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-2xl font-bold leading-tight text-gray-800">
+                    <h2 class="text-2xl font-black leading-tight text-gray-900 uppercase tracking-tight">
                         Asset Inventory
                     </h2>
-                    <p class="mt-1 text-sm text-gray-500">Manage and track university equipment across all departments.</p>
+                    <p class="mt-1 text-xs font-bold text-gray-400 uppercase tracking-widest">Global Asset Governance &
+                        Life-cycle Management</p>
                 </div>
-                <Link
-                    v-if="can('asset-create')"
-                    :href="route('assets.create')"
-                    class="inline-flex items-center rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-soft transition-all hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
-                >
-                    <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                    Register Asset
-                </Link>
+                <div class="flex gap-3">
+                    <AppButton v-if="can('asset-create')" :href="route('assets.create')" variant="primary"
+                        class="rounded-xl shadow-premium px-6">
+                        <template #icon>
+                            <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                        </template>
+                        Register Asset
+                    </AppButton>
+                </div>
             </div>
         </template>
 
-        <div class="py-10">
-            <div class="w-full">
-                <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div class="relative w-full max-w-2xl">
-                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
-                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <div class="py-8">
+            <div class="space-y-6">
+
+                <!-- Advanced Filtering Bar (Enterprise Grid) -->
+                <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+                    <!-- Row 1: Search & Type -->
+                    <div class="flex flex-col md:flex-row items-end gap-4">
+                        <div class="flex-1 w-full">
+                            <label class="form-group-label">Global Search</label>
+                            <div class="relative group">
+                                <TextInput v-model="filterForm.search" type="text" class="w-full !pl-11"
+                                    placeholder="Search by code, room, or category..." />
+                                <div
+                                    class="absolute inset-y-0 left-4 flex items-center text-gray-400 group-focus-within:text-primary transition-colors">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
-                        <TextInput
-                            v-model="search"
-                            type="text"
-                            class="block w-full border-gray-200 pl-11 focus:border-primary focus:ring-primary h-12 rounded-2xl shadow-soft transition-all"
-                            placeholder="Search by serial, room, category, or department..."
-                        />
+
+                        <div class="w-full md:w-64">
+                            <label class="form-group-label">Asset Classification</label>
+                            <select v-model="filterForm.asset_type" class="w-full">
+                                <option value="">Global Hierarchy</option>
+                                <option value="individual">Standalone Items</option>
+                                <option value="bundle">System Bundles</option>
+                                <option value="component">System Components</option>
+                            </select>
+                        </div>
+
+                        <button @click="resetFilters"
+                            class="h-[44px] px-6 rounded-[10px] border border-gray-200 bg-white text-[12px] font-black text-gray-500 hover:bg-gray-50 hover:text-primary transition-all uppercase tracking-widest flex items-center justify-center gap-2">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                </path>
+                            </svg>
+                            Reset
+                        </button>
+                    </div>
+
+                    <!-- Row 2: Location & Category -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label class="form-group-label">Building / Zone</label>
+                            <select v-model="filterForm.building_id" class="w-full">
+                                <option value="">All Buildings</option>
+                                <option v-for="b in meta.buildings" :key="b.id" :value="b.id">{{ b.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-group-label">Room / Precise Area</label>
+                            <select v-model="filterForm.room_id" :disabled="!filterForm.building_id" class="w-full">
+                                <option value="">All Rooms</option>
+                                <option v-for="r in rooms" :key="r.id" :value="r.id">{{ r.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-group-label">Main Category</label>
+                            <select v-model="filterForm.category_id" class="w-full">
+                                <option value="">All Categories</option>
+                                <option v-for="c in meta.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-group-label">Lifecycle Status</label>
+                            <select v-model="filterForm.statuses[0]" class="w-full">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active (Working)</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="damaged">Damaged</option>
+                                <option value="retired">Retired</option>
+                                <option value="lost">Lost</option>
+                            </select>
+                        </div>
+                        <div v-if="filterForm.category_id" class="animate-in fade-in slide-in-from-top-2 duration-300">
+                             <label class="form-group-label">Specific Sub-category</label>
+                             <select v-model="filterForm.sub_category_id" class="w-full border-primary/30">
+                                 <option value="">All {{ filterForm.category_id ? meta.categories.find(c => c.id === filterForm.category_id)?.name : 'Sub-categories' }}</option>
+                                 <option v-for="sc in subCategories" :key="sc.id" :value="sc.id">{{ sc.name }}</option>
+                             </select>
+                        </div>
                     </div>
                 </div>
 
-                <div
-                    v-if="filteredAssets.length === 0"
-                    class="rounded-2xl border border-dashed border-gray-300 bg-white p-20 text-center shadow-soft"
-                >
-                    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gray-50 text-gray-400">
-                        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                <!-- Active Filters & Results Summary -->
+                <div class="flex items-center justify-between px-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            Showing <span class="text-gray-900">{{ assets.total }}</span> assets
+                        </span>
+                        <div v-if="activeFiltersCount > 0"
+                            class="flex items-center gap-1.5 rounded-full bg-primary/5 px-3 py-1 ring-1 ring-primary/20">
+                            <span class="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                            <span class="text-[10px] font-black uppercase tracking-tighter text-primary">Filters active
+                                ({{
+                                activeFiltersCount }})</span>
+                        </div>
                     </div>
-                    <h3 class="mt-4 text-lg font-bold text-gray-900">No assets found</h3>
-                    <p class="mt-1 text-gray-500">Try adjusting your search filters or add a new asset.</p>
                 </div>
 
-                <div v-else class="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-premium">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead>
-                            <tr class="bg-gray-50/50 text-left text-[11px] font-black uppercase tracking-widest text-gray-500">
-                                <th class="px-6 py-5">Asset Identification</th>
-                                <th class="px-6 py-5">Placement</th>
-                                <th class="px-6 py-5">Classification</th>
-                                <th class="px-6 py-5 text-center">Status</th>
-                                <th class="px-6 py-5 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            <tr v-for="asset in filteredAssets" :key="asset.id" class="group transition-all hover:bg-gray-50/50">
-                                <td class="px-6 py-5">
-                                    <div class="flex items-center">
-                                         <div class="mr-4 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-gray-100 bg-white shadow-sm transition-transform group-hover:scale-110">
-                                            <svg class="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
-                                         </div>
-                                         <div class="flex flex-col">
-                                            <span class="font-bold text-gray-900">{{ asset.serial_number || 'N/A' }}</span>
-                                            <div class="flex items-center mt-1">
-                                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-tighter">{{ asset.owner_department }}</span>
-                                                <span v-if="asset.is_shared" class="ml-2 flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-black text-blue-600 uppercase tracking-tighter ring-1 ring-inset ring-blue-100">
-                                                    Shared
-                                                </span>
+                <div class="flex flex-col lg:flex-row gap-8">
+                    <!-- Table Section -->
+                    <div class="flex-1 w-full overflow-hidden">
+
+                        <div v-if="assets.data.length === 0"
+                            class="rounded-3xl border border-dashed border-gray-200 bg-white p-24 text-center shadow-soft">
+                            <div
+                                class="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-gray-50 text-gray-300">
+                                <svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                            <h3 class="mt-6 text-xl font-black text-gray-900 uppercase">No Matches Found</h3>
+                            <p class="mt-2 text-gray-400 font-medium">Try refining your enterprise filters or check the
+                                audit
+                                logs.</p>
+                            <button @click="resetFilters"
+                                class="mt-8 text-sm font-black text-primary uppercase tracking-widest hover:underline">Clear
+                                all
+                                filters</button>
+                        </div>
+
+                        <div v-else class="space-y-6">
+                            <div class="overflow-x-auto rounded-3xl border border-gray-100 bg-white shadow-premium">
+                                <table class="min-w-full divide-y divide-gray-100 text-sm">
+                                    <thead>
+                                        <tr
+                                            class="bg-gray-50/80 text-left text-[11px] font-bold uppercase tracking-widest text-[#6B7280] border-b border-gray-200">
+                                            <th class="px-6 py-4">Visual</th>
+                                            <th class="px-6 py-4">Identification / Code</th>
+                                            <th class="px-6 py-4">Placement / Owner</th>
+                                            <th class="px-6 py-4">Status & Quality</th>
+                                            <th class="px-6 py-4">Created Info</th>
+                                            <th class="px-6 py-4 text-right">Ops</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        <template v-for="asset in assets.data" :key="asset.id">
+                                            <tr
+                                                class="group border-b border-gray-100 hover:bg-gray-50/30 transition-colors">
+                                                <td class="px-6 py-4">
+                                                    <div class="h-12 w-12 rounded-lg border border-gray-100 bg-gray-50 overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-[#1FA6A0] transition-all"
+                                                        @click="showImagePreview(asset.image_url)">
+                                                        <img v-if="asset.image_url" :src="asset.image_url"
+                                                            class="h-full w-full object-cover" />
+                                                        <svg v-else class="h-6 w-6 text-gray-300" fill="none"
+                                                            stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                stroke-width="2"
+                                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    <div class="flex items-center gap-3">
+                                                        <div class="flex-1 min-w-0">
+                                                            <div class="flex flex-col gap-1">
+                                                                <div class="flex items-center gap-2">
+                                                                    <Link :href="route('assets.show', asset.id)"
+                                                                        class="text-[14px] font-bold text-[#1F2937] hover:text-[#1FA6A0] leading-tight">
+                                                                        {{ asset.category || 'General Asset' }}
+                                                                        <span v-if="asset.subCategory" class="text-gray-400 font-medium ml-1">— {{ asset.subCategory }}</span>
+                                                                    </Link>
+
+                                                                    <div v-if="asset.is_parent"
+                                                                        class="flex h-5 w-5 items-center justify-center rounded bg-indigo-50 text-indigo-600 cursor-pointer hover:bg-indigo-100 transition-colors ml-1"
+                                                                        @click="toggleExpand(asset.id)"
+                                                                        title="Expand System Components">
+                                                                        <svg class="h-3 w-3"
+                                                                            :class="{ 'rotate-90': expandedAssets.includes(asset.id) }"
+                                                                            fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round"
+                                                                                stroke-linejoin="round"
+                                                                                stroke-width="2.5" d="M9 5l7 7-7 7" />
+                                                                        </svg>
+                                                                    </div>
+
+                                                                    <!-- SERIAL BADGE -->
+                                                                    <span v-if="asset.bundle_serial" class="series-badge">
+                                                                        {{ asset.bundle_serial }}
+                                                                    </span>
+                                                                    <span v-else-if="asset.series_no || asset.parent_id" class="series-badge">
+                                                                        {{ asset.short_code }}
+                                                                    </span>
+                                                                </div>
+                                                                <div
+                                                                    class="text-[10px] font-black font-mono text-gray-500 bg-gray-50 px-2 py-0.5 rounded border border-gray-200 self-start shadow-sm tracking-tight">
+                                                                    {{ asset.full_serial || asset.asset_code || 'PENDING' }}
+                                                                </div>
+
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    <div class="flex flex-col">
+                                                        <p class="text-[13px] font-semibold text-[#1F2937]">{{
+                                                            asset.room?.name || 'Central Hall' }}</p>
+                                                        <p
+                                                            class="text-[11px] font-bold text-[#6B7280] uppercase tracking-tight">
+                                                            {{ asset.owner_department || 'University' }}</p>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    <div class="flex items-center gap-2">
+                                                        <span
+                                                            :class="['inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider', getStatusBadgeClass(asset.status)]">
+                                                            {{ getStatusLabel(asset.status) }}
+                                                        </span>
+                                                        <span v-if="asset.count > 1"
+                                                            class="text-[10px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded">Qty:
+                                                            {{ asset.count }}</span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4">
+                                                    <div class="flex flex-col leading-tight gap-1">
+                                                        <span class="text-[11px] text-gray-500 font-medium">
+                                                            <span class="text-gray-400 text-[10px]">Created by:</span> {{ asset.created_by }}
+                                                        </span>
+                                                        <span class="text-[10px] text-gray-400">
+                                                            Date: {{ asset.created_at_formatted }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 text-right">
+                                                    <div class="flex justify-end gap-2 px-2">
+                                                        <Link :href="route('assets.show', asset.id)"
+                                                            class="px-3 py-1.5 rounded-lg border border-gray-100 text-[10px] font-black uppercase tracking-widest text-[#1FA6A0] hover:bg-[#1FA6A0] hover:text-white transition-all shadow-sm">
+                                                            Verify</Link>
+                                                        <Link v-if="can('asset-edit')"
+                                                            :href="route('assets.edit', asset.id)"
+                                                            class="px-3 py-1.5 rounded-lg border border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-50 transition-all shadow-sm">
+                                                            Edit</Link>
+                                                        <button v-if="can('asset-delete')"
+                                                            @click="confirmDeletion(asset)"
+                                                            class="p-2 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-all flex items-center justify-center border border-transparent hover:border-rose-100"
+                                                            title="Archive Asset">
+                                                            <svg class="h-4 w-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2.2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Hierarchical Children Rows -->
+                                            <template v-if="asset.is_parent && expandedAssets.includes(asset.id)">
+                                                <tr v-for="child in asset.children" :key="'child-' + child.id"
+                                                    class="bg-gray-50/20 border-b border-gray-100">
+                                                    <td class="px-6 py-2 flex justify-center">
+                                                        <div class="h-8 w-8 rounded border border-gray-200 bg-white overflow-hidden flex items-center justify-center shadow-xs cursor-pointer hover:ring-2 hover:ring-[#1FA6A0] transition-all"
+                                                            @click="showImagePreview(child.image_url)">
+                                                            <img v-if="child.image_url" :src="child.image_url"
+                                                                class="h-full w-full object-cover" />
+                                                            <svg v-else class="h-4 w-4 text-gray-300" fill="none"
+                                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-2 pl-12 relative">
+                                                        <!-- Simple tree line -->
+                                                        <div class="absolute left-6 top-0 bottom-0 w-px bg-gray-200">
+                                                        </div>
+                                                        <div class="absolute left-6 top-1/2 w-4 h-px bg-gray-200"></div>
+                                                        <div class="flex flex-col gap-1">
+                                                            <div class="flex items-center gap-2">
+                                                                <Link :href="route('assets.show', child.id)"
+                                                                    class="text-[11px] font-bold text-[#1F2937] hover:text-[#1FA6A0] truncate">
+                                                                    {{ child.name }}
+                                                                </Link>
+                                                                 <span v-if="child.bundle_serial" class="series-badge !text-[11px] !px-2 !py-0.5">
+                                                                    {{ child.bundle_serial }}
+                                                                </span>
+                                                                <span v-else-if="child.series_no" class="series-badge !text-[11px] !px-2 !py-0.5">
+                                                                    {{ child.short_code }}
+                                                                </span>
+                                                            </div>
+                                                             <span
+                                                                class="text-[9px] font-black font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 self-start">{{
+                                                                child.full_serial || child.asset_code }}</span>
+
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-2">
+                                                        <span
+                                                            class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">System
+                                                            Component</span>
+                                                    </td>
+                                                    <td class="px-6 py-2 text-center">
+                                                        <span
+                                                            class="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-white border border-gray-100 text-gray-500">{{
+                                                            child.status }}</span>
+                                                    </td>
+                                                    <td class="px-6 py-2">
+                                                        <div class="flex flex-col leading-tight gap-0.5">
+                                                            <span class="text-[10px] text-gray-500 font-medium">
+                                                                <span class="text-gray-400 text-[9px]">Created by:</span> {{ child.created_by }}
+                                                            </span>
+                                                            <span class="text-[9px] text-gray-400">
+                                                                Date: {{ child.created_at_formatted }}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-2 text-right">
+                                                        <Link :href="route('assets.show', child.id)"
+                                                            class="text-[10px] font-bold text-[#1FA6A0] hover:underline uppercase">
+                                                            Details</Link>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            <tr v-if="asset.is_parent && asset.children.length === 0 && expandedAssets.includes(asset.id)"
+                                                class="bg-gray-50/30">
+                                                <td colspan="6"
+                                                    class="px-6 py-4 text-center text-[11px] text-gray-400 italic border-b border-gray-50">
+                                                    No components registered in this system yet.
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <Pagination :links="assets.links" />
+                        </div>
+                    </div>
+
+                    <!-- Transfer Sidebar (Same as before but polished) -->
+                    <div v-if="(isSuperAdmin || isAssetManager) && meta.departments.length > 0" class="w-full lg:w-80">
+                        <div
+                            class="sticky top-8 rounded-3xl border border-gray-100 bg-white p-8 shadow-premium ring-4 ring-gray-50/50">
+                            <h3
+                                class="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center">
+                                <svg class="mr-2 h-4 w-4 text-primary" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                Transfer Hub
+                            </h3>
+                            <p class="text-xs text-gray-400 mb-8 font-medium leading-relaxed">Drag an asset into a
+                                department
+                                below to reassign ownership instantly.</p>
+
+                            <div class="space-y-3">
+                                <div v-for="dept in meta.departments" :key="dept.id" class="relative group"
+                                    @dragover="onDragOver($event, dept.id)" @drop="onDrop($event, dept.id)">
+                                    <div class="flex items-center justify-between rounded-2xl border p-4 transition-all duration-300"
+                                        :class="[dropTargetDeptId === dept.id ? 'border-primary bg-primary/5 scale-105 shadow-inner' : 'border-transparent bg-gray-50/50 hover:bg-white hover:border-gray-200 hover:shadow-soft']">
+                                        <div class="flex items-center gap-4 overflow-hidden">
+                                            <div
+                                                class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm transition-transform group-hover:rotate-12">
+                                                <span class="text-xs font-black text-primary">{{ dept.name.substring(0,
+                                                    2).toUpperCase() }}</span>
                                             </div>
-                                         </div>
+                                            <span
+                                                class="truncate text-xs font-black text-gray-700 uppercase tracking-tighter">{{
+                                                dept.name }}</span>
+                                        </div>
                                     </div>
-                                </td>
-                                <td class="px-6 py-5">
-                                    <div class="flex flex-col">
-                                        <span class="font-bold text-gray-900">{{ asset.room?.name || 'Central Hall' }}</span>
-                                        <span class="text-xs text-gray-500">{{ [asset.room?.location, asset.room?.building].filter(Boolean).join(' • ') }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-5">
-                                     <div class="flex flex-col">
-                                        <span class="font-bold text-primary">{{ asset.subCategory }}</span>
-                                        <span class="text-[11px] font-semibold text-gray-400 uppercase">{{ asset.category }}</span>
-                                     </div>
-                                </td>
-                                <td class="px-6 py-5 text-center">
-                                    <span :class="['inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold transition-all', getStatusBadgeClass(asset.condition)]">
-                                        {{ getStatusLabel(asset.condition) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-5 text-right">
-                                    <Link
-                                        v-if="can('asset-list')"
-                                        :href="route('assets.show', asset.id)"
-                                        class="inline-flex items-center rounded-xl bg-white px-4 py-2 text-xs font-black text-gray-700 shadow-soft ring-1 ring-gray-200 transition-all hover:bg-gray-50 hover:text-primary hover:ring-primary/30"
-                                    >
-                                        View Data
-                                        <svg class="ml-2 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                                    </Link>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </AuthenticatedLayout>
+
+    <!-- ERP-Grade Full Preview Modal -->
+    <Teleport to="body">
+        <div v-if="previewImage"
+            class="fixed inset-0 z-[999] flex items-center justify-center bg-gray-900/90 backdrop-blur-md p-4 sm:p-20"
+            @click="previewImage = null">
+            <div class="relative max-h-full max-w-5xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200"
+                @click.stop>
+                <img :src="previewImage" class="max-h-[85vh] w-auto object-contain" />
+                <div class="absolute top-4 right-4 flex gap-2">
+                    <button @click="previewImage = null"
+                        class="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md hover:bg-white/40 shadow-lg">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+
+    <!-- Delete Confirmation Modal -->
+    <Modal :show="showDeleteModal" @close="closeDeleteModal" max-width="md">
+        <div class="p-8">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-gray-900 uppercase tracking-tight">Archive Asset?</h3>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Enterprise Deletion
+                        Protocol
+                    </p>
+                </div>
+            </div>
+
+            <div class="space-y-4 rounded-2xl bg-gray-50 p-5 border border-gray-100">
+                <p class="text-[13px] font-medium text-gray-600 leading-relaxed">
+                    You are about to archive asset <span class="font-mono font-bold text-primary">{{
+                        assetToDelete?.asset_code }}</span>.
+                    This will remove the item from active inventory but keep the record in the database for audit
+                    compliance.
+                </p>
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-white border border-gray-200">
+                    <svg class="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-[11px] font-bold text-gray-500 leading-normal">Recycle Bin Policy: This asset can be
+                        restored later by an administrator with Audit permissions.</p>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end gap-3">
+                <SecondaryButton @click="closeDeleteModal" class="px-6 !rounded-xl">
+                    Cancel
+                </SecondaryButton>
+                <DangerButton @click="executeDelete" :disabled="isDeleting"
+                    class="px-8 !rounded-xl shadow-lg shadow-rose-200 hover:shadow-rose-300 transition-all font-black uppercase tracking-widest text-[11px]">
+                    {{ isDeleting ? 'Archiving...' : 'Delete Asset' }}
+                </DangerButton>
+            </div>
+        </div>
+    </Modal>
 </template>
+
+<style scoped>
+.series-badge {
+    background: #1FA6A0;
+    color: white;
+    font-size: 14px;
+    padding: 3px 10px;
+    border-radius: 8px;
+    margin-left: 6px;
+    font-weight: 800;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(31, 166, 160, 0.2);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    letter-spacing: -0.02em;
+}
+</style>

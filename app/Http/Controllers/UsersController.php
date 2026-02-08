@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -17,8 +18,11 @@ class UsersController extends Controller
     {
         $departmentId = $request->session()->get('selected_department_id');
 
+        /** @var \App\Models\User $authUser */
+        $authUser = $request->user();
+
         $users = User::with(['roles', 'departments'])
-            ->when($departmentId && !$request->user()->hasRole('SuperAdmin'), fn ($query) => $query->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId)))
+            ->when($departmentId && $authUser->role !== 'super_admin', fn ($query) => $query->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId)))
             ->orderBy('name')
             ->get()
             ->map(function (User $user) {
@@ -79,13 +83,16 @@ class UsersController extends Controller
             'default_department_id' => ['nullable', 'integer', 'exists:departments,id'],
         ]);
 
+        $role = Role::findOrFail($data['role_id']);
+        $roleName = Str::snake($role->name);
+
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'role' => $roleName,
         ]);
 
-        $role = Role::findOrFail($data['role_id']);
         $user->assignRole($role);
 
         \Illuminate\Support\Facades\Log::info('User created: ' . $user->email . ' with role: ' . $role->name);
@@ -111,7 +118,7 @@ class UsersController extends Controller
             \Illuminate\Support\Facades\Log::info('Synced ' . $departmentIds->count() . ' departments for user: ' . $user->email);
         }
 
-        return redirect()->route('users.index');
+        return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
 
     public function edit(User $user): Response
@@ -156,15 +163,18 @@ class UsersController extends Controller
             'default_department_id' => ['nullable', 'integer', 'exists:departments,id'],
         ]);
 
+        $role = Role::findOrFail($data['role_id']);
+        $roleName = Str::snake($role->name);
+
         $user->update([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password']
                 ? Hash::make($data['password'])
                 : $user->password,
+            'role' => $roleName,
         ]);
 
-        $role = Role::findOrFail($data['role_id']);
         $user->syncRoles([$role->name]);
 
         $departmentIds = collect($data['department_ids'] ?? [])->unique()->values();
@@ -172,8 +182,7 @@ class UsersController extends Controller
 
         if ($departmentIds->isEmpty()) {
             $user->departments()->detach();
-
-            return redirect()->route('users.index');
+            return redirect()->route('users.index')->with('success', 'User updated successfully.');
         }
 
         if ($departmentIds->count() === 1) {
@@ -191,13 +200,29 @@ class UsersController extends Controller
 
         $user->departments()->sync($pivotData->all());
 
-        return redirect()->route('users.index');
+        return redirect()->route('users.index')->with('success', 'User updated successfully.');
     }
 
-    public function destroy(User $user): RedirectResponse
+    public function destroy(User $user, Request $request): RedirectResponse
     {
+        /** @var \App\Models\User $authUser */
+        $authUser = $request->user();
+
+        // 1. Prevent self-deletion
+        if ($authUser->id === $user->id) {
+            return back()->with('error', 'Institutional Security: You cannot delete your own active session account.');
+        }
+
+        // 2. Ensure at least one SuperAdmin persists
+        if ($user->hasRole('SuperAdmin')) {
+            $superAdminCount = User::role('SuperAdmin')->count();
+            if ($superAdminCount <= 1) {
+                return back()->with('error', 'System Safeguard: Deleting the final Super Admin is prohibited to prevent terminal lockout.');
+            }
+        }
+
         $user->delete();
 
-        return redirect()->route('users.index');
+        return redirect()->route('users.index')->with('success', 'Account terminated successfully.');
     }
 }

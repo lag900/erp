@@ -31,12 +31,15 @@ class RolesController extends Controller
 
     public function create(): Response
     {
-        $permissions = Permission::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $groups = \App\Models\PermissionGroup::with(['permissions' => function($q) {
+            $q->orderBy('name');
+        }])->orderBy('sort_order')->orderBy('name')->get();
+
+        $ungrouped = Permission::whereNull('permission_group_id')->orderBy('name')->get();
 
         return Inertia::render('Roles/Create', [
-            'permissions' => $permissions,
+            'groups' => $groups,
+            'ungrouped' => $ungrouped,
         ]);
     }
 
@@ -53,17 +56,20 @@ class RolesController extends Controller
             'guard_name' => 'web',
         ]);
 
-        $permissions = Permission::whereIn('id', $data['permission_ids'] ?? [])->get();
-        $role->syncPermissions($permissions);
+        $role->syncPermissions($data['permission_ids'] ?? []);
+        
+        \App\Traits\LogsActivity::log('role_created', "Created security role: {$role->name}", $role);
 
-        return redirect()->route('roles.index');
+        return redirect()->route('roles.index')->with('success', 'Identity role established.');
     }
 
     public function edit(Role $role): Response
     {
-        $permissions = Permission::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $groups = \App\Models\PermissionGroup::with(['permissions' => function($q) {
+            $q->orderBy('name');
+        }])->orderBy('sort_order')->orderBy('name')->get();
+
+        $ungrouped = Permission::whereNull('permission_group_id')->orderBy('name')->get();
 
         return Inertia::render('Roles/Edit', [
             'role' => [
@@ -71,7 +77,8 @@ class RolesController extends Controller
                 'name' => $role->name,
                 'permission_ids' => $role->permissions()->pluck('id')->values(),
             ],
-            'permissions' => $permissions,
+            'groups' => $groups,
+            'ungrouped' => $ungrouped,
         ]);
     }
 
@@ -90,6 +97,8 @@ class RolesController extends Controller
         $permissions = Permission::whereIn('id', $data['permission_ids'] ?? [])->get();
         $role->syncPermissions($permissions);
 
+        \App\Traits\LogsActivity::log('role_updated', "Updated security role: {$role->name}", $role);
+
         return redirect()->route('roles.index');
     }
 
@@ -100,6 +109,8 @@ class RolesController extends Controller
         }
 
         $role->delete();
+
+        \App\Traits\LogsActivity::log('role_deleted', "Deleted security role: {$role->name}");
 
         return redirect()->route('roles.index');
     }

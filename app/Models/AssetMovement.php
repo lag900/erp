@@ -49,4 +49,11 @@ class AssetMovement extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    protected $appends = ['created_at_human'];
+
+    public function getCreatedAtHumanAttribute()
+    {
+        return $this->created_at ? $this->created_at->diffForHumans() : 'Date Unknown';
+    }
 }

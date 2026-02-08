@@ -31,24 +31,24 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $departmentPayload = null;
-        $permissions = [];
+        $permissions = collect([]);
 
-        if ($request->user()) {
-            if ($request->user()->hasRole('SuperAdmin')) {
+        if ($user = $request->user()) {
+            /** @var \App\Models\User $user */
+            
+            // Get all permissions for checking 'can' in frontend
+            if ($user->hasRole('SuperAdmin')) {
                 $permissions = \Spatie\Permission\Models\Permission::pluck('name')->values();
             } else {
-                $permissions = $request->user()
-                    ->getAllPermissions()
-                    ->pluck('name')
-                    ->values();
+                $permissions = $user->getAllPermissions()->pluck('name')->values();
             }
 
-            $featureKeys = [];
             $selectedDepartmentId = $request->session()->get('selected_department_id');
+            $featureKeys = collect([]);
+            $department = null;
 
             if ($selectedDepartmentId) {
                 $department = Department::with('features')->find($selectedDepartmentId);
-
                 if ($department) {
                     $featureKeys = $department->features
                         ->filter(fn ($feature) => (bool) ($feature->pivot->is_enabled ?? false))
@@ -57,14 +57,54 @@ class HandleInertiaRequests extends Middleware
                 }
             }
 
+            // Build dynamic sidebar
+            $sidebar = \App\Models\PermissionGroup::with(['permissions' => function ($query) use ($permissions) {
+                    $query->where('is_sidebar_item', true)
+                          ->whereIn('name', $permissions)
+                          ->orderBy('sort_order');
+                }])
+                ->orderBy('sort_order')
+                ->get()
+                ->map(function ($group) use ($featureKeys) {
+                    // Specific logic for Assets group - hide if asset feature not enabled
+                    if ($group->name === 'Assets' && !in_array('assets', $featureKeys->toArray())) {
+                        return null;
+                    }
+
+                    // Specific logic for Reports group - hide if reports feature not enabled
+                    if ($group->name === 'Reports' && !in_array('reports', $featureKeys->toArray())) {
+                        return null;
+                    }
+
+                    $items = $group->permissions->map(function ($permission) {
+                        return [
+                            'label' => $permission->sidebar_label,
+                            'route' => $permission->route_name,
+                            'icon' => $permission->icon,
+                            'permission' => $permission->name,
+                        ];
+                    });
+
+                    if ($items->isEmpty()) {
+                        return null;
+                    }
+
+                    return [
+                        'group' => $group->name,
+                        'items' => $items,
+                    ];
+                })
+                ->filter()
+                ->values();
+
             $departmentPayload = [
-                'selectedId' => $request->session()->get('selected_department_id'),
-                'list' => $request->user()
-                    ->departments()
+                'selectedId' => $selectedDepartmentId,
+                'list' => $user->departments()
                     ->select('departments.id', 'departments.name')
                     ->orderBy('departments.name')
                     ->get(),
                 'featuresEnabled' => $featureKeys,
+                'sidebar' => $sidebar,
             ];
         }
 

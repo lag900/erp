@@ -24,8 +24,10 @@ const permissions = computed(() => page.props.auth?.permissions ?? []);
 const can = (permission) => permissions.value.includes(permission);
 
 const form = useForm({
+    _method: 'PUT',
     category_id: props.subCategory.category_id,
     name: props.subCategory.name,
+    code: props.subCategory.code || '',
     image: null,
 });
 </script>
@@ -63,7 +65,6 @@ const form = useForm({
                 <form
                     class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-soft"
                     @submit.prevent="form.post(route('subcategories.update', subCategory.id), {
-                        method: 'put',
                         forceFormData: true,
                     })"
                 >
@@ -116,6 +117,18 @@ const form = useForm({
                                 class="mt-1 block w-full"
                             />
                             <InputError class="mt-2" :message="form.errors.name" />
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <InputLabel for="code" value="Subcategory Code" />
+                            <TextInput
+                                id="code"
+                                v-model="form.code"
+                                class="mt-1 block w-full font-mono bg-gray-50 uppercase"
+                                placeholder="e.g. DESK"
+                            />
+                            <p class="mt-1 text-xs text-gray-500">Short unique code used in generating asset identification numbers (QR codes).</p>
+                            <InputError class="mt-2" :message="form.errors.code" />
                         </div>
 
                         <div class="sm:col-span-2">

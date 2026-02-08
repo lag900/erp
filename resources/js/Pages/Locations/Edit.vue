@@ -7,6 +7,8 @@ import DangerButton from '@/Components/DangerButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
+import EntityImage from '@/Components/EntityImage.vue';
+import imageCompression from 'browser-image-compression';
 
 const props = defineProps({
     location: {
@@ -25,6 +27,26 @@ const form = useForm({
     description: props.location.description ?? '',
     image: null,
 });
+
+const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+        initialQuality: 0.8
+    };
+
+    try {
+        const compressedFile = await imageCompression(file, options);
+        form.image = compressedFile;
+    } catch (error) {
+        console.error('Image compression failed:', error);
+        form.image = file;
+    }
+};
 </script>
 
 <template>
@@ -126,8 +148,9 @@ const form = useForm({
                                                     id="image"
                                                     type="file"
                                                     accept="image/*"
+                                                    capture="environment"
                                                     class="sr-only"
-                                                    @input="form.image = $event.target.files[0]"
+                                                    @change="handleImageUpload"
                                                 />
                                             </label>
                                             <p class="pl-1">or drag and drop</p>

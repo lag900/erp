@@ -20,8 +20,9 @@ trait BelongsToDepartment
             $selectedId = session('selected_department_id');
             static::addGlobalScope('department', function (Builder $builder) use ($selectedId) {
                 // Bypass department scoping for SuperAdmins
+                /** @var \App\Models\User $user */
                 $user = \Illuminate\Support\Facades\Auth::user();
-                if ($user && method_exists($user, 'hasRole') && $user->hasRole('SuperAdmin')) {
+                if ($user && $user->hasRole('SuperAdmin')) {
                     return;
                 }
 

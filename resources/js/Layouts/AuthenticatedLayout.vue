@@ -6,6 +6,9 @@ import NavLink from '@/Components/NavLink.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import DepartmentSwitcher from '@/Components/DepartmentSwitcher.vue';
+import Toast from '@/Components/Toast.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
+
 
 const showingNavigationDropdown = ref(false);
 const page = usePage();
@@ -14,13 +17,11 @@ const permissions = computed(() => page.props.auth?.permissions ?? []);
 const roles = computed(() => page.props.auth?.roles ?? []);
 const enabledFeatures = computed(() => page.props.departmentContext?.featuresEnabled ?? []);
 
-const can = (permission) => permissions.value.includes(permission);
-const hasRole = (role) => roles.value.includes(role);
 const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
+    <div class="min-h-screen bg-[#F8FAFC] antialiased">
         <div class="flex h-screen overflow-hidden">
             <!-- Global Sidebar (Desktop) -->
             <Sidebar class="hidden flex-shrink-0 lg:flex" />
@@ -31,22 +32,25 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
                 <header class="hidden lg:flex h-16 items-center justify-between border-b border-gray-200 bg-white px-8">
                     <div class="flex items-center gap-4">
                         <!-- Left side of header (e.g., Search or Breadcrumbs can go here) -->
+                        <div class="w-64">
+                            <DepartmentSwitcher />
+                        </div>
                     </div>
 
                     <div class="flex items-center gap-4">
                         <Dropdown align="right" width="48">
                             <template #trigger>
-                                <button class="flex items-center gap-3 rounded-full bg-white p-1 pr-3 text-sm transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 border border-gray-100 shadow-sm">
+                                <button class="flex items-center gap-3 rounded-full bg-white p-1 pr-3 text-sm transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#1FA6A0] focus:ring-offset-2 border border-gray-100 shadow-sm">
                                     <img 
                                         v-if="$page.props.auth.user.image" 
                                         :src="$page.props.auth.user.image_url" 
                                         alt="User Avatar" 
                                         class="h-8 w-8 rounded-full object-cover"
                                     />
-                                    <div v-else class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-primary font-bold uppercase text-xs">
+                                    <div v-else class="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1FA6A0] font-bold uppercase text-xs">
                                          {{ $page.props.auth.user.name.charAt(0) }}
                                     </div>
-                                    <div class="flex flex-col items-start text-left leading-none">
+                                    <div v-if="$page.props.auth.user" class="flex flex-col items-start text-left leading-none">
                                         <span class="font-bold text-gray-800 tracking-tight">{{ $page.props.auth.user.name }}</span>
                                         <span class="text-[10px] font-medium text-gray-400 uppercase tracking-wider mt-0.5">{{ $page.props.auth.roles && $page.props.auth.roles.length > 0 ? $page.props.auth.roles[0] : 'Member' }}</span>
                                     </div>
@@ -92,7 +96,7 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
 
                     <Dropdown align="right" width="48">
                         <template #trigger>
-                            <button class="flex items-center rounded-full bg-gray-100 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
+                            <button class="flex items-center rounded-full bg-gray-100 p-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#1FA6A0] focus:ring-offset-2">
                                 <span class="sr-only">Open user menu</span>
                                 <img 
                                     v-if="$page.props.auth.user.image" 
@@ -100,7 +104,7 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
                                     alt="User Avatar" 
                                     class="h-8 w-8 rounded-full object-cover"
                                 />
-                                <div v-else class="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-primary font-bold uppercase text-xs">
+                                <div v-else class="flex h-8 w-8 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1FA6A0] font-bold uppercase text-xs">
                                      {{ $page.props.auth.user.name.charAt(0) }}
                                 </div>
                             </button>
@@ -142,51 +146,32 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
                      </div>
 
                     <nav class="space-y-1 px-4 pb-4">
-                         <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
+                        <NavLink :href="route('dashboard')" :active="route().current('dashboard')" @click="showingNavigationDropdown = false">
                             Dashboard
                         </NavLink>
-                         <!-- Asset Management -->
-                        <div v-if="hasFeature('assets')" class="pt-4">
-                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Assets</p>
-                            <NavLink v-if="can('asset-list')" :href="route('assets.index')" :active="route().current('assets.*')">Assets</NavLink>
-                            <NavLink v-if="can('location-list')" :href="route('locations.index')" :active="route().current('locations.*')">Locations</NavLink>
-                            <NavLink v-if="can('building-list')" :href="route('buildings.index')" :active="route().current('buildings.*')">Buildings</NavLink>
-                            <NavLink v-if="can('level-list')" :href="route('levels.index')" :active="route().current('levels.*')">Levels</NavLink>
-                            <NavLink v-if="can('room-list')" :href="route('rooms.index')" :active="route().current('rooms.*')">Rooms</NavLink>
-                            <NavLink v-if="can('category-list')" :href="route('categories.index')" :active="route().current('categories.*')">Categories</NavLink>
-                            <NavLink v-if="can('sub_category-list')" :href="route('subcategories.index')" :active="route().current('subcategories.*')">Subcategories</NavLink>
-                        </div>
 
-                         <!-- Organization -->
-                         <div class="pt-4">
-                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Organization</p>
-                            <NavLink v-if="can('department-list')" :href="route('departments.index')" :active="route().current('departments.index')">Departments</NavLink>
-                            <NavLink v-if="can('feature-toggle')" :href="route('departments.features')" :active="route().current('departments.features')">Features</NavLink>
-                        </div>
-
-                        <!-- Access Control -->
-                         <div class="pt-4">
-                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Access Control</p>
-                             <NavLink v-if="can('user-list')" :href="route('users.index')" :active="route().current('users.*')">Users</NavLink>
-                             <NavLink v-if="can('role-list')" :href="route('roles.index')" :active="route().current('roles.*')">Roles</NavLink>
-                             <NavLink v-if="can('permission-list')" :href="route('permissions.index')" :active="route().current('permissions.*')">Permissions</NavLink>
-                        </div>
-
-                        <!-- Media (Only for Media Role or permissions) -->
-                        <div v-if="hasRole('Media') || can('news-list') || can('media-settings-manage')" class="pt-4">
-                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Media</p>
-                            <NavLink v-if="can('news-list')" :href="route('media.news.index')" :active="route().current('media.news.*')">News</NavLink>
-                            <NavLink v-if="can('media-settings-manage')" :href="route('media.settings.edit')" :active="route().current('media.settings.*')">Settings</NavLink>
+                        <!-- Dynamic Sidebar Groups for Mobile -->
+                        <div v-for="group in $page.props.departmentContext?.sidebar" :key="group.group" class="pt-4">
+                            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">{{ group.group }}</p>
+                            <NavLink 
+                                v-for="item in group.items" 
+                                :key="item.permission" 
+                                :href="route(item.route)" 
+                                :active="route().current(item.route) || (item.route.endsWith('.index') && route().current(item.route.replace('.index', '.*')))"
+                                @click="showingNavigationDropdown = false"
+                            >
+                                {{ item.label }}
+                            </NavLink>
                         </div>
                     </nav>
                 </div>
 
 
                 <!-- Page Content -->
-                <main class="flex-1 overflow-y-auto bg-gray-50 focus:outline-none">
+                <main class="flex-1 overflow-y-auto bg-[#F8FAFC] focus:outline-none">
                     <div class="py-6">
                         <div v-if="$slots.header" class="w-full px-4 sm:px-6 lg:px-10 mb-8">
-                            <h1 class="text-3xl font-extrabold tracking-tight text-gray-900">
+                            <h1 class="text-[28px] font-semibold tracking-tight text-gray-900">
                                 <slot name="header" />
                             </h1>
                         </div>
@@ -197,5 +182,7 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
                 </main>
             </div>
         </div>
+        <Toast />
+        <ConfirmModal />
     </div>
 </template>

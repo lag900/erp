@@ -4,6 +4,10 @@ import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 
+const hasMultiple = computed(() => {
+    return page.props.hasMultipleDepartments !== false; // Default to true if not set
+});
+
 const selectedDepartmentName = computed(() => {
     const payload = page.props.departmentContext ?? null;
     if (!payload || !payload.selectedId || !Array.isArray(payload.list)) {
@@ -22,6 +26,7 @@ const selectedDepartmentName = computed(() => {
     <div class="px-3 py-2">
         <div v-if="selectedDepartmentName" class="group relative">
             <Link
+                v-if="hasMultiple"
                 :href="route('departments.select')"
                 class="flex w-full items-center justify-between rounded-lg border border-transparent bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary"
             >
@@ -37,6 +42,15 @@ const selectedDepartmentName = computed(() => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
                 </svg>
             </Link>
+            
+            <div v-else class="flex w-full items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm font-medium text-gray-600 ring-1 ring-gray-200 cursor-default">
+                <div class="flex items-center gap-2 overflow-hidden">
+                    <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-200 text-gray-500">
+                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </div>
+                    <span class="truncate font-semibold text-gray-600">{{ selectedDepartmentName }}</span>
+                </div>
+            </div>
         </div>
 
         <div v-else>

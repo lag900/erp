@@ -179,114 +179,117 @@ onUnmounted(() => {
     document.removeEventListener('click', closeDropdown);
     document.removeEventListener('keydown', handleKeydown);
 });
+
+defineExpose({
+    focus: () => {
+        if (dropdownRef.value?.querySelector('button')) {
+            dropdownRef.value.querySelector('button').focus();
+        }
+    },
+    open: () => {
+        if (!props.disabled) {
+            isOpen.value = true;
+            nextTick(() => {
+                if (searchInputRef.value) {
+                    searchInputRef.value.focus();
+                }
+            });
+        }
+    }
+});
 </script>
 
 <template>
     <div class="relative" ref="dropdownRef">
-        <InputLabel v-if="label" :for="`searchable-select-${label}`" :value="label" />
-        <div class="relative mt-1">
+        <label v-if="label" :for="`ss-${label}`" class="form-group-label">
+            {{ label }}
+        </label>
+        
+        <div class="relative">
             <button
-                :id="`searchable-select-${label}`"
+                :id="`ss-${label}`"
                 type="button"
                 :disabled="disabled"
-                class="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500"
                 @click="toggleDropdown"
+                class="flex items-center justify-between w-full h-[44px] px-4 bg-[#F8FAFC] border border-[#E5E7EB] rounded-[10px] text-[15px] font-medium text-gray-700 transition-all hover:border-[#1FA6A0] focus:border-[#1FA6A0] focus:bg-white focus:shadow-[0_0_0_4px_rgba(31,166,160,0.1)] disabled:opacity-50 disabled:cursor-not-allowed text-left group"
+                :class="{ 'border-[#1FA6A0] bg-white ring-4 ring-[#1FA6A0]/10': isOpen }"
             >
-                <span class="block truncate">
+                <span class="truncate" :class="{ 'text-gray-400': !selectedOption }">
                     {{ selectedOption ? selectedOption.label : placeholder }}
                 </span>
-                <span
-                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2"
+                <svg
+                    class="h-5 w-5 text-gray-400 group-hover:text-[#1FA6A0] transition-transform flex-shrink-0 ml-2"
+                    :class="{ 'rotate-180 text-[#1FA6A0]': isOpen }"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                 >
-                    <svg
-                        class="h-5 w-5 text-gray-400 transition-transform"
-                        :class="{ 'rotate-180': isOpen }"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                    >
-                        <path
-                            fill-rule="evenodd"
-                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                            clip-rule="evenodd"
-                        />
-                    </svg>
-                </span>
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
             </button>
 
             <transition
-                enter-active-class="transition ease-out duration-100"
-                enter-from-class="transform opacity-0 scale-95"
-                enter-to-class="transform opacity-100 scale-100"
-                leave-active-class="transition ease-in duration-75"
-                leave-from-class="transform opacity-100 scale-100"
-                leave-to-class="transform opacity-0 scale-95"
+                enter-active-class="transition ease-out duration-150"
+                enter-from-class="transform opacity-0 -translate-y-2"
+                enter-to-class="transform opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-100"
+                leave-from-class="transform opacity-100 translate-y-0"
+                leave-to-class="transform opacity-0 -translate-y-2"
             >
                 <div
                     v-if="isOpen"
-                    class="absolute z-10 mt-1 w-full overflow-hidden rounded-md bg-white text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
+                    class="absolute z-[150] mt-2 w-full bg-white rounded-[12px] border border-[#E5E7EB] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] overflow-hidden"
                 >
-                    <div class="sticky top-0 z-10 border-b border-gray-200 bg-white px-3 py-2">
-                        <input
-                            ref="searchInputRef"
-                            v-model="searchQuery"
-                            type="text"
-                            class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                            :placeholder="searchPlaceholder"
-                            @click.stop
-                            @keydown.stop
-                        />
+                    <!-- Search Bar -->
+                    <div class="p-2 bg-gray-50/50 border-b border-gray-100">
+                        <div class="relative">
+                            <input
+                                ref="searchInputRef"
+                                v-model="searchQuery"
+                                type="text"
+                                class="w-full h-[38px] !bg-white !rounded-[8px] !text-[13px] !pl-9 !border-gray-200"
+                                :placeholder="searchPlaceholder"
+                                @click.stop
+                                @keydown.stop
+                            />
+                            <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="max-h-60 overflow-auto">
+                    <!-- Options List -->
+                    <div class="max-h-[280px] overflow-y-auto custom-scrollbar">
                         <div
                             v-if="filteredOptions.length === 0"
-                            class="px-3 py-2 text-sm text-gray-500"
+                            class="px-5 py-8 text-center"
                         >
-                            {{ searchQuery ? 'No options found' : 'No options available' }}
+                            <svg class="mx-auto h-8 w-8 text-gray-200 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <p class="text-[13px] text-gray-400 font-medium">{{ searchQuery ? 'No matches found' : 'No options available' }}</p>
                         </div>
-                        <ul
-                            v-else
-                            class="py-1"
-                            role="listbox"
-                        >
+                        
+                        <ul role="listbox" class="p-1">
                             <li
                                 v-for="option in filteredOptions"
-                                :key="`option-${option.id}`"
-                                class="relative cursor-pointer select-none py-2 pl-3 pr-9 transition-colors hover:bg-indigo-50"
-                                :class="{
-                                    'bg-indigo-50': String(option.id) === String(modelValue),
-                                }"
+                                :key="`opt-${option.id}`"
+                                @click="selectOption(option)"
                                 role="option"
                                 :aria-selected="String(option.id) === String(modelValue)"
-                                @click="selectOption(option)"
+                                class="flex items-center justify-between px-4 py-2.5 rounded-[8px] cursor-pointer transition-all hover:bg-[#F8FAFC]"
+                                :class="{ 'bg-[#E6F4F3]/50 text-[#1FA6A0]': String(option.id) === String(modelValue) }"
                             >
-                                <span
-                                    class="block truncate"
-                                    :class="{
-                                        'font-medium text-indigo-600': String(option.id) === String(modelValue),
-                                        'font-normal text-gray-900': String(option.id) !== String(modelValue),
-                                    }"
-                                >
+                                <span class="text-[14px] font-semibold truncate leading-none">
                                     {{ option.label }}
                                 </span>
-                                <span
+                                <svg
                                     v-if="String(option.id) === String(modelValue)"
-                                    class="absolute inset-y-0 right-0 flex items-center pr-4 text-indigo-600"
+                                    class="h-4 w-4 text-[#1FA6A0]"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
                                 >
-                                    <svg
-                                        class="h-5 w-5"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                            clip-rule="evenodd"
-                                        />
-                                    </svg>
-                                </span>
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
                             </li>
                         </ul>
                     </div>
@@ -295,3 +298,19 @@ onUnmounted(() => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #E5E7EB;
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #D1D5DB;
+}
+</style>

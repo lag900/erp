@@ -8,10 +8,15 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import EntityImage from '@/Components/EntityImage.vue';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
 
 const props = defineProps({
     category: {
         type: Object,
+        required: true,
+    },
+    departments: {
+        type: Array,
         required: true,
     },
 });
@@ -22,7 +27,9 @@ const can = (permission) => permissions.value.includes(permission);
 
 const form = useForm({
     name: props.category.name,
+    code: props.category.code || '',
     image: null,
+    department_ids: props.category.department_ids || [],
 });
 </script>
 
@@ -37,7 +44,7 @@ const form = useForm({
                         Edit Category
                     </h2>
                     <p class="mt-1 text-sm text-gray-500">
-                        Update category details or manage its media.
+                        Update category details or manage its department assignments.
                     </p>
                 </div>
                 <div class="flex items-center gap-3">
@@ -58,8 +65,10 @@ const form = useForm({
             <div class="mx-auto max-w-3xl sm:px-6 lg:px-8">
                  <form
                     class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-soft"
-                    @submit.prevent="form.post(route('categories.update', category.id), {
-                        method: 'put',
+                    @submit.prevent="form.transform((data) => ({
+                        ...data,
+                        _method: 'put',
+                    })).post(route('categories.update', category.id), {
                         forceFormData: true,
                     })"
                 >
@@ -91,6 +100,42 @@ const form = useForm({
                         </div>
 
                         <div>
+                            <InputLabel for="code" value="Category Code" />
+                            <TextInput
+                                id="code"
+                                v-model="form.code"
+                                class="mt-1 block w-full font-mono bg-gray-50 uppercase"
+                                placeholder="e.g. ELEC"
+                            />
+                             <p class="mt-1 text-xs text-gray-500">Short unique code used in generating asset identification numbers (QR codes).</p>
+                            <InputError class="mt-2" :message="form.errors.code" />
+                        </div>
+
+                        <div>
+                            <InputLabel value="Assigned Departments" />
+                            <p class="text-xs text-gray-500 mt-1 mb-3">Select which departments can use this category. Shared categories help in cross-departmental reporting.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto p-3 border border-gray-100 rounded-lg bg-gray-50/50">
+                                <label 
+                                    v-for="dept in props.departments" 
+                                    :key="dept.id"
+                                    class="relative flex items-start cursor-pointer group"
+                                >
+                                    <div class="flex h-6 items-center">
+                                        <GlobalCheckbox
+                                            :id="'dept-' + dept.id"
+                                            v-model:checked="form.department_ids"
+                                            :value="dept.id"
+                                        />
+                                    </div>
+                                    <div class="ml-3 text-sm leading-6">
+                                        <span class="font-medium text-gray-700 group-hover:text-primary transition-colors">{{ dept.name }}</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <InputError class="mt-2" :message="form.errors.department_ids" />
+                        </div>
+
+                        <div>
                             <InputLabel for="image" value="Category Image" />
                             
                              <div class="mt-2 flex gap-6">
@@ -103,13 +148,13 @@ const form = useForm({
                                     />
                                     <p class="mt-1 text-center text-xs text-gray-500">Current</p>
                                 </div>
-                                <div class="grow rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
+                                <div class="grow rounded-lg border border-dashed border-gray-900/25 px-6 py-10 transition-colors hover:border-primary/50">
                                     <div class="text-center">
                                         <svg class="mx-auto h-12 w-12 text-gray-300" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                             <path fill-rule="evenodd" d="M1.5 6a2.25 2.25 0 012.25-2.25h16.5A2.25 2.25 0 0122.5 6v12a2.25 2.25 0 01-2.25 2.25H3.75A2.25 2.25 0 011.5 18V6zM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0021 18v-1.94l-2.69-2.689a1.5 1.5 0 00-2.12 0l-.88.879.97.97a.75.75 0 11-1.06 1.06l-5.16-5.159a1.5 1.5 0 00-2.12 0L3 16.061zm10.125-7.81a1.125 1.125 0 112.25 0 1.125 1.125 0 01-2.25 0z" clip-rule="evenodd" />
                                         </svg>
                                         <div class="mt-4 flex text-sm leading-6 text-gray-600 justify-center">
-                                            <label for="image" class="relative cursor-pointer rounded-md bg-white font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-indigo-500">
+                                            <label for="image" class="relative cursor-pointer rounded-md bg-white font-semibold text-primary focus-within:outline-none focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 hover:text-indigo-500 transition-colors">
                                                 <span>{{ category.image_url ? 'Replace image' : 'Upload a file' }}</span>
                                                 <input
                                                     id="image"
@@ -122,9 +167,12 @@ const form = useForm({
                                             <p class="pl-1">or drag and drop</p>
                                         </div>
                                         <p class="text-xs leading-5 text-gray-600">PNG, JPG, GIF up to 2MB</p>
-                                        <p v-if="form.image" class="mt-2 text-sm font-semibold text-green-600">
-                                            Selected: {{ form.image.name }}
-                                        </p>
+                                        <div v-if="form.image" class="mt-2 flex items-center justify-center gap-2">
+                                            <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                                Selected: {{ form.image.name }}
+                                            </span>
+                                            <button type="button" @click="form.image = null" class="text-xs text-red-500 hover:text-red-700 underline">Remove</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -135,11 +183,11 @@ const form = useForm({
                     <div class="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100">
                         <Link
                             :href="route('categories.index')"
-                            class="text-sm font-medium text-gray-600 hover:text-gray-900"
+                            class="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
                         >
                             Cancel
                         </Link>
-                        <PrimaryButton v-if="can('category-edit')" :disabled="form.processing">
+                        <PrimaryButton v-if="can('category-edit')" :disabled="form.processing" class="shadow-sm">
                             <svg class="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             Save Changes
                         </PrimaryButton>

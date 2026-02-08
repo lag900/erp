@@ -4,6 +4,7 @@ import { Head, useForm, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
 
 const props = defineProps({
     departments: {
@@ -142,23 +143,23 @@ const save = () => {
                                             props.features.find((f) => f.id === feature.id)?.name
                                         }}
                                     </p>
-                                    <p class="text-xs text-gray-500">
-                                        {{
-                                            props.features.find((f) => f.id === feature.id)?.key
-                                        }}
+                                    <p class="text-[9px] font-black uppercase text-gray-400 tracking-widest leading-none">
+                                        {{ props.features.find((f) => f.id === feature.id)?.key }}
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="rounded px-3 py-1 text-xs font-semibold"
-                                    :disabled="!can('feature-toggle')"
-                                    :class="feature.is_enabled
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-gray-100 text-gray-600'"
-                                    @click="toggleFeature(feature.id)"
-                                >
-                                    {{ feature.is_enabled ? 'Enabled' : 'Disabled' }}
-                                </button>
+                                <div class="flex items-center gap-3">
+                                    <span 
+                                        class="text-[10px] font-bold uppercase tracking-tight"
+                                        :class="feature.is_enabled ? 'text-primary' : 'text-gray-400'"
+                                    >
+                                        {{ feature.is_enabled ? 'Active' : 'Locked' }}
+                                    </span>
+                                    <GlobalCheckbox
+                                        :id="'feature-' + feature.id"
+                                        :checked="feature.is_enabled"
+                                        @update:checked="toggleFeature(feature.id)"
+                                    />
+                                </div>
                             </div>
                         </div>
 

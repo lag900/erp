@@ -109,6 +109,13 @@ const deleteDepartment = (departmentId) => {
                                         >
                                             Edit
                                         </Link>
+                                        <Link
+                                            v-if="can('branding-manage')"
+                                            :href="route('departments.branding', department.id)"
+                                            class="text-indigo-600 hover:text-indigo-700"
+                                        >
+                                            Branding
+                                        </Link>
                                         <DangerButton
                                             v-if="can('department-delete')"
                                             type="button"

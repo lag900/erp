@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
 
 const form = useForm({
     title: '',
@@ -83,7 +84,7 @@ const submit = () => {
                             </div>
                             
                             <div v-if="form.status === 'published'" class="flex items-center gap-2 mt-6">
-                                <input v-model="form.publish_to_facebook" type="checkbox" id="fb_check" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                <GlobalCheckbox v-model:checked="form.publish_to_facebook" id="fb_check" />
                                 <label for="fb_check" class="text-sm font-bold text-blue-800">Publish to University Facebook Page</label>
                             </div>
                         </div>

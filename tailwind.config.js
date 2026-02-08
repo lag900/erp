@@ -13,15 +13,15 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', 'Cairo', ...defaultTheme.fontFamily.sans],
             },
             colors: {
                 primary: {
-                    DEFAULT: '#004D40', // Deep Academic Green
-                    hover: '#00352C',
-                    light: '#00695C',
+                    DEFAULT: '#3d4adb', // Formal Administrative Blue
+                    hover: '#2c36b8',
+                    light: '#5c69ff',
                 },
-                secondary: '#E0F2F1', // Light Teal/Green background
+                secondary: '#f1f5f9', // Light Slate background
             },
             boxShadow: {
                 'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',

@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import GlobalCheckbox from '@/Components/GlobalCheckbox.vue';
 
 const props = defineProps({
     settings: Object,
@@ -50,11 +51,11 @@ const submit = () => {
                                 <div class="grid grid-cols-1 gap-6">
                                     <div class="flex items-center gap-4 bg-blue-50 p-4 rounded-lg">
                                         <div class="flex items-center gap-2">
-                                            <input v-model="form.fb_enabled" type="checkbox" id="fb_enabled" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                            <GlobalCheckbox v-model:checked="form.fb_enabled" id="fb_enabled" />
                                             <label for="fb_enabled" class="text-sm font-bold text-slate-700">Enable Facebook Integration</label>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <input v-model="form.fb_auto_publish" type="checkbox" id="fb_auto" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                            <GlobalCheckbox v-model:checked="form.fb_auto_publish" id="fb_auto" />
                                             <label for="fb_auto" class="text-sm font-bold text-slate-700">Auto-Publish to Facebook</label>
                                         </div>
                                     </div>

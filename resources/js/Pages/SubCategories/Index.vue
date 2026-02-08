@@ -127,6 +127,11 @@ const executeDelete = (id) => {
                     type="category"
                     :badgeText="sub.code"
                 >
+                    <template #title-extra>
+                        <p v-if="sub.name_ar" dir="rtl" class="text-sm font-bold text-slate-500 mt-1">
+                            {{ sub.name_ar }}
+                        </p>
+                    </template>
                     <template #actions>
                         <Link
                             v-if="can('sub_category-edit')"

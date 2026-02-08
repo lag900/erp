@@ -29,6 +29,7 @@ class SubCategoriesController extends Controller
             ->map(fn (SubCategory $subCategory) => [
                 'id' => $subCategory->id,
                 'name' => $subCategory->name,
+                'name_ar' => $subCategory->name_ar,
                 'code' => $subCategory->code,
                 'category' => $subCategory->category?->name,
                 'image_url' => $subCategory->image_url,
@@ -122,7 +123,7 @@ class SubCategoriesController extends Controller
 
         $items = SubCategory::where('category_id', $categoryId)
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'name_ar']);
 
         return response()->json($items);
     }

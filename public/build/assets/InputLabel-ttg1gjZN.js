@@ -1,0 +1,1 @@
+import{o as a,a as e,t as s,r as t}from"./vendor-DGI0tb4d.js";const l={class:"block text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-2 ml-0.5"},p={key:0},o={key:1},n={__name:"InputLabel",props:{value:{type:String}},setup:n=>(r,u)=>(a(),e("label",l,[n.value?(a(),e("span",p,s(n.value),1)):(a(),e("span",o,[t(r.$slots,"default")]))]))};export{n as _};

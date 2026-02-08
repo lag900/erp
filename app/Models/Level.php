@@ -26,4 +26,14 @@ class Level extends Model
     {
         return $this->hasMany(Room::class);
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($level) {
+            // This will trigger the deleting event for each room
+            $level->rooms->each->delete();
+        });
+    }
 }

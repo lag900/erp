@@ -27,6 +27,7 @@ const can = (permission) => permissions.value.includes(permission);
 
 const form = useForm({
     name: props.category.name,
+    name_ar: props.category.name_ar || '',
     code: props.category.code || '',
     image: null,
     department_ids: props.category.department_ids || [],
@@ -96,13 +97,24 @@ const form = useForm({
 
                     <div class="p-6 grid gap-6">
                         <div>
-                            <InputLabel for="name" value="Category Name" />
+                            <InputLabel for="name" value="Category Name (English)" />
                             <TextInput
                                 id="name"
                                 v-model="form.name"
                                 class="mt-1 block w-full"
                             />
                             <InputError class="mt-2" :message="form.errors.name" />
+                        </div>
+
+                        <div>
+                            <InputLabel for="name_ar" value="Category Name (Arabic)" />
+                            <TextInput
+                                id="name_ar"
+                                v-model="form.name_ar"
+                                dir="rtl"
+                                class="mt-1 block w-full text-right"
+                            />
+                            <InputError class="mt-2" :message="form.errors.name_ar" />
                         </div>
 
                         <div>

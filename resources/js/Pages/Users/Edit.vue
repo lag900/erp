@@ -77,6 +77,7 @@ const availableDefaultDepartments = computed(() => {
             <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
                 <form
                     class="rounded bg-white p-6 shadow"
+                    novalidate
                     @submit.prevent="form.put(route('users.update', user.id), {
                         onSuccess: () => window.showToast('success', 'User updated successfully')
                     })"
@@ -96,7 +97,8 @@ const availableDefaultDepartments = computed(() => {
                             <TextInput
                                 id="email"
                                 v-model="form.email"
-                                type="email"
+                                type="text"
+                                inputmode="email"
                                 class="mt-1 block w-full"
                             />
                             <InputError class="mt-2" :message="form.errors.email" />

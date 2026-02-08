@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\SecurityHeadersMiddleware::class,
+            \App\Http\Middleware\CompressResponse::class, // Gzip compression for production
         ]);
 
         $middleware->alias([

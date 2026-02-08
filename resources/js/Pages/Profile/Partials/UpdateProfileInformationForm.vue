@@ -75,6 +75,7 @@ const selectNewPhoto = () => {
             })"
             class="mt-6 space-y-6"
             enctype="multipart/form-data"
+            novalidate
         >
             <!-- Profile Photo -->
             <div class="col-span-6 sm:col-span-4">
@@ -133,7 +134,8 @@ const selectNewPhoto = () => {
 
                 <TextInput
                     id="email"
-                    type="email"
+                    type="text"
+                    inputmode="email"
                     class="mt-1 block w-full"
                     v-model="form.email"
                     required

@@ -206,7 +206,10 @@ class AssetsController extends Controller
     {
         return Category::orderBy('name')
             ->get()
-            ->map(fn($c) => ['id' => $c->id, 'label' => $c->name]);
+            ->map(fn($c) => [
+                'id' => $c->id, 
+                'label' => $c->name . ($c->name_ar ? " ({$c->name_ar})" : "")
+            ]);
     }
 
     private function getClassificationsForSelection()
@@ -215,18 +218,21 @@ class AssetsController extends Controller
         $classifications = collect();
 
         foreach ($categories as $category) {
+            $catLabel = $category->name . ($category->name_ar ? " ({$category->name_ar})" : "");
+            
             if ($category->subCategories->isEmpty()) {
                 $classifications->push([
                     'id' => "{$category->id}:",
-                    'label' => $category->name,
+                    'label' => $catLabel,
                     'category_id' => $category->id,
                     'sub_category_id' => null,
                 ]);
             } else {
                 foreach ($category->subCategories as $sub) {
+                    $subLabel = $sub->name . ($sub->name_ar ? " ({$sub->name_ar})" : "");
                     $classifications->push([
                         'id' => "{$category->id}:{$sub->id}",
-                        'label' => "{$category->name} - {$sub->name}",
+                        'label' => "{$catLabel} - {$subLabel}",
                         'category_id' => $category->id,
                         'sub_category_id' => $sub->id,
                     ]);
@@ -245,7 +251,7 @@ class AssetsController extends Controller
             ->map(function (SubCategory $subCategory) {
                 return [
                 'id' => (int) $subCategory->id,
-                'label' => $subCategory->name,
+                'label' => $subCategory->name . ($subCategory->name_ar ? " ({$subCategory->name_ar})" : ""),
                 'category_id' => $subCategory->category_id,
             ];    });
     }
@@ -1293,17 +1299,8 @@ class AssetsController extends Controller
      */
     private function processAndStoreImage($file): string
     {
-        $filename = 'asset_' . time() . '_' . uniqid() . '.jpg';
-        $path = 'asset_infos/' . $filename;
-
-        // Optimize using Intervention Image (V3)
-        $img = Image::read($file);
-        
-        // Strip metadata and encode to JPG with 80% quality
-        $encoded = $img->toJpeg(80);
-        
-        Storage::disk('public')->put($path, (string) $encoded);
-
-        return $path;
+        $imageOptimizer = app(\App\Services\ImageOptimizationService::class);
+        $result = $imageOptimizer->processImage($file, 'asset_infos', false);
+        return $result['full'];
     }
 }

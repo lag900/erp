@@ -27,6 +27,7 @@ const form = useForm({
     _method: 'PUT',
     category_id: props.subCategory.category_id,
     name: props.subCategory.name,
+    name_ar: props.subCategory.name_ar || '',
     code: props.subCategory.code || '',
     image: null,
 });
@@ -105,7 +106,7 @@ const form = useForm({
                                         :key="category.id"
                                         :value="category.id"
                                     >
-                                        {{ category.name }}
+                                        {{ category.name }} {{ category.name_ar ? `(${category.name_ar})` : '' }}
                                     </option>
                                 </select>
                                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -116,13 +117,24 @@ const form = useForm({
                         </div>
 
                         <div class="sm:col-span-2">
-                            <InputLabel for="name" value="Subcategory Name" />
+                            <InputLabel for="name" value="Subcategory Name (English)" />
                             <TextInput
                                 id="name"
                                 v-model="form.name"
                                 class="mt-1 block w-full"
                             />
                             <InputError class="mt-2" :message="form.errors.name" />
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <InputLabel for="name_ar" value="Subcategory Name (Arabic)" />
+                            <TextInput
+                                id="name_ar"
+                                v-model="form.name_ar"
+                                dir="rtl"
+                                class="mt-1 block w-full text-right"
+                            />
+                            <InputError class="mt-2" :message="form.errors.name_ar" />
                         </div>
 
                         <div class="sm:col-span-2">

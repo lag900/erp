@@ -40,6 +40,7 @@ class CategoriesController extends Controller
             ->map(fn($category) => [
                 'id' => $category->id,
                 'name' => $category->name,
+                'name_ar' => $category->name_ar,
                 'code' => $category->code,
                 'image_url' => $category->image_url,
                 'department_names' => $category->departments->pluck('name')->join(', '),
@@ -71,6 +72,7 @@ class CategoriesController extends Controller
             'category' => [
                 'id' => $category->id,
                 'name' => $category->name,
+                'name_ar' => $category->name_ar,
                 'code' => $category->code,
                 'image_url' => $category->image_url,
                 'department_ids' => $category->departments->pluck('id'),

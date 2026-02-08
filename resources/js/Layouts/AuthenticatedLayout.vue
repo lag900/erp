@@ -9,6 +9,10 @@ import DepartmentSwitcher from '@/Components/DepartmentSwitcher.vue';
 import Toast from '@/Components/Toast.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 
+const props = defineProps({
+    isFluid: { type: Boolean, default: false }
+});
+
 const showingNavigationDropdown = ref(false);
 const page = usePage();
 
@@ -179,12 +183,12 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
                 <!-- Page Content -->
                 <main class="flex-1 overflow-y-auto bg-[#f8fafc] focus:outline-none">
                     <div class="py-8 lg:py-10">
-                        <div v-if="$slots.header" class="w-full px-4 sm:px-8 lg:px-12 mb-10">
+                        <div v-if="$slots.header" :class="[props.isFluid ? 'w-full px-4 sm:px-6' : 'w-full px-4 sm:px-8 lg:px-12', 'mb-10']">
                             <h1 class="text-3xl font-bold tracking-tight text-slate-800 leading-tight">
                                 <slot name="header" />
                             </h1>
                         </div>
-                        <div class="w-full px-4 sm:px-8 lg:px-12 pb-20">
+                        <div :class="[props.isFluid ? 'w-full px-4 sm:px-6' : 'w-full px-4 sm:px-8 lg:px-12', 'pb-20']">
                              <slot />
                         </div>
                     </div>

@@ -21,6 +21,7 @@ const can = (permission) => permissions.value.includes(permission);
 const form = useForm({
     category_id: '',
     name: '',
+    name_ar: '',
     code: '',
     image: null,
 });
@@ -98,7 +99,7 @@ watch(() => form.name, (newName) => {
                                         :key="category.id"
                                         :value="category.id"
                                     >
-                                        {{ category.name }}
+                                        {{ category.name }} {{ category.name_ar ? `(${category.name_ar})` : '' }}
                                     </option>
                                 </select>
                                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
@@ -109,7 +110,7 @@ watch(() => form.name, (newName) => {
                         </div>
 
                         <div>
-                            <InputLabel for="name" value="Sub-category Name" class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" />
+                            <InputLabel for="name" value="Sub-category Name (English)" class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" />
                             <TextInput
                                 id="name"
                                 v-model="form.name"
@@ -117,6 +118,18 @@ watch(() => form.name, (newName) => {
                                 placeholder="e.g. Scientific Equipment"
                             />
                             <InputError class="mt-2" :message="form.errors.name" />
+                        </div>
+
+                        <div>
+                            <InputLabel for="name_ar" value="Sub-category Name (Arabic)" class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2" />
+                            <TextInput
+                                id="name_ar"
+                                v-model="form.name_ar"
+                                dir="rtl"
+                                class="block w-full rounded-xl border-gray-200 py-3 font-bold shadow-sm transition-all focus:border-primary focus:ring-primary h-12 text-right"
+                                placeholder="مثال: أثاث مدرسي"
+                            />
+                            <InputError class="mt-2" :message="form.errors.name_ar" />
                         </div>
 
                         <div>

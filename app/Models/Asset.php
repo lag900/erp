@@ -42,6 +42,16 @@ class Asset extends Model
         'full_serial',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($asset) {
+            // Delete associated infos when asset is deleted
+            $asset->infos()->delete();
+        });
+    }
+
     public function groupType(): BelongsTo
     {
         return $this->belongsTo(AssetGroupType::class, 'group_type_id');

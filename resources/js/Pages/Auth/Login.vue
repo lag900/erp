@@ -49,14 +49,15 @@ const submit = () => {
             </p>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-6">
+        <form @submit.prevent="submit" class="space-y-6" novalidate>
             <div>
                 <InputLabel for="email" value="Email Address" class="text-sm font-semibold text-gray-800" />
 
                 <div class="mt-1.5">
                     <TextInput
                         id="email"
-                        type="email"
+                        type="text"
+                        inputmode="email"
                         class="block w-full px-4 py-3.5 text-base border-gray-300 focus:border-primary focus:ring-primary shadow-sm rounded-lg"
                         v-model="form.email"
                         required

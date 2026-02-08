@@ -110,8 +110,18 @@ class LevelsController extends Controller
 
     public function destroy(Level $level): RedirectResponse
     {
-        $level->delete();
+        \Illuminate\Support\Facades\Gate::authorize('level-delete');
 
-        return redirect()->route('levels.index');
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($level) {
+                $level->delete();
+            });
+
+            return redirect()->route('levels.index')
+                ->with('message', 'Level and all related rooms/assets have been successfully decommissioned.');
+        } catch (\Exception $e) {
+            return redirect()->route('levels.index')
+                ->with('error', 'Failed to decommission level: ' . $e->getMessage());
+        }
     }
 }

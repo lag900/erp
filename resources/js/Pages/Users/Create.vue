@@ -63,6 +63,7 @@ const availableDefaultDepartments = computed(() => {
             <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
                 <form
                     class="rounded bg-white p-6 shadow"
+                    novalidate
                     @submit.prevent="form.post(route('users.store'), {
                         onSuccess: () => window.showToast('success', 'User created successfully')
                     })"
@@ -83,7 +84,8 @@ const availableDefaultDepartments = computed(() => {
                             <TextInput
                                 id="email"
                                 v-model="form.email"
-                                type="email"
+                                type="text"
+                                inputmode="email"
                                 class="mt-1 block w-full"
                                 placeholder="user@example.com"
                             />

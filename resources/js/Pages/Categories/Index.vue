@@ -126,6 +126,11 @@ const executeDelete = (id) => {
                     type="category"
                     :badgeText="category.code"
                 >
+                    <template #title-extra>
+                        <p v-if="category.name_ar" dir="rtl" class="text-sm font-bold text-slate-500 mt-1">
+                            {{ category.name_ar }}
+                        </p>
+                    </template>
                     <template #subtitle-extra>
                         <div v-if="category.department_names" class="mt-3 flex flex-wrap gap-1.5">
                             <span class="inline-flex items-center rounded-lg bg-[#3d4adb]/5 px-2.5 py-1 text-[9px] font-bold text-[#3d4adb] border border-[#3d4adb]/10 uppercase tracking-widest">

@@ -1,0 +1,1 @@
+import{s,L as e,o as a,a as t,b as r,t as o}from"./vendor-DGI0tb4d.js";const p={class:"text-sm text-red-600"},m={__name:"InputError",props:{message:{type:String}},setup:m=>(n,g)=>s((a(),t("div",null,[r("p",p,o(m.message),1)],512)),[[e,m.message]])};export{m as _};

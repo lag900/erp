@@ -2,10 +2,21 @@
 
 namespace App\Providers;
 
+use App\Models\ActivityLog;
+use App\Models\Asset;
+use App\Models\User;
+use App\Observers\AssetObserver;
+use App\Observers\UserObserver;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,11 +34,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Schema::defaultStringLength(191);
-        \App\Models\Asset::observe(\App\Observers\AssetObserver::class);
-        \App\Models\User::observe(\App\Observers\UserObserver::class);
+        Asset::observe(AssetObserver::class);
+        User::observe(UserObserver::class);
 
-        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Login::class, function ($event) {
-            \App\Models\ActivityLog::create([
+        Event::listen(Login::class, function ($event) {
+            ActivityLog::create([
                 'user_id' => $event->user->id,
                 'action' => 'login',
                 'description' => 'User logged in',
@@ -36,9 +47,9 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Logout::class, function ($event) {
+        Event::listen(Logout::class, function ($event) {
             if ($event->user) {
-                \App\Models\ActivityLog::create([
+                ActivityLog::create([
                     'user_id' => $event->user->id,
                     'action' => 'logout',
                     'description' => 'User logged out',
@@ -52,11 +63,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Implicitly grant "SuperAdmin" role all permissions
         // This works in the app by using gate-related functions like auth()->user->can() and @can()
-        Gate::before(function (\App\Models\User $user, $ability) {
+        Gate::before(function (User $user, $ability) {
             return $user->hasRole('SuperAdmin') ? true : null;
         });
 
-        Gate::define('manage-asset-visibility', function (\App\Models\User $user) {
+        Gate::define('manage-asset-visibility', function (User $user) {
             // Allow admin roles
             if ($user->hasRole('SuperAdmin') || $user->hasRole('Admin')) {
                 return true;
@@ -74,22 +85,22 @@ class AppServiceProvider extends ServiceProvider
         // Automatically creates a SuperAdmin account if none exists.
         // This runs only in non-console production environments for first-boot safety.
         if (!app()->runningInConsole()) {
-            \Illuminate\Support\Facades\Cache::remember('superadmin_provisioned', 3600, function () {
+            Cache::remember('superadmin_provisioned', 3600, function () {
                 try {
-                    if (\Illuminate\Support\Facades\Schema::hasTable('users')) {
-                        $exists = \App\Models\User::role('SuperAdmin')->exists() || \App\Models\User::where('email', '1@1.com')->exists();
+                    if (Schema::hasTable('users')) {
+                        $exists = User::role('SuperAdmin')->exists() || User::where('email', '1@1.com')->exists();
                         
                         if (!$exists) {
-                            $user = \App\Models\User::create([
+                            $user = User::create([
                                 'name' => 'System Owner',
                                 'email' => '1@1.com',
-                                'password' => \Illuminate\Support\Facades\Hash::make('1@1.com'),
+                                'password' => Hash::make('1@1.com'),
                                 'email_verified_at' => now(),
                                 'role' => 'SuperAdmin',
                                 'is_active' => true,
                             ]);
 
-                            $role = \Spatie\Permission\Models\Role::where('name', 'SuperAdmin')->first();
+                            $role = Role::where('name', 'SuperAdmin')->first();
                             if ($role) {
                                 $user->assignRole($role);
                             }

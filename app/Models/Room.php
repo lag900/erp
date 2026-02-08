@@ -26,4 +26,15 @@ class Room extends Model
     {
         return $this->hasMany(Asset::class);
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($room) {
+            // Force Delete associated assets to clean up rows immediately
+            // This prevents FK integrity issues if cascade is missing (though we fixed that too)
+            $room->assets->each->forceDelete();
+        });
+    }
 }

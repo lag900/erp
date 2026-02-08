@@ -195,8 +195,8 @@ class ErbSeeder extends Seeder
         ]);
 
         $superAdminRole = Role::where('name', 'SuperAdmin')->firstOrFail();
-        $managerRole = Role::where('name', 'DepartmentManager')->firstOrFail();
-        $staffRole = Role::where('name', 'DepartmentStaff')->firstOrFail();
+        $managerRole = Role::where('name', 'Manager')->firstOrFail();
+        $staffRole = Role::where('name', 'Data Entry')->firstOrFail();
 
         $superAdmin = User::firstOrCreate(
             ['email' => 'superadmin@example.com'],

@@ -13,10 +13,16 @@ class DepartmentSelectionController extends Controller
     {
         $user = $request->user();
         
-        $departments = $user->departments()
-            ->select('departments.id', 'departments.name')
-            ->orderBy('departments.name')
-            ->get();
+        if ($user->hasRole('SuperAdmin')) {
+            $departments = \App\Models\Department::select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        } else {
+            $departments = $user->departments()
+                ->select('departments.id', 'departments.name')
+                ->orderBy('departments.name')
+                ->get();
+        }
 
         // تجربة مستخدم محسنة: إذا كان لديه قسم واحد فقط، إعادته للوحة التحكم فوراً
         if ($departments->count() === 1) {
@@ -27,7 +33,7 @@ class DepartmentSelectionController extends Controller
 
         // إذا لم يكن لديه أي قسم، منعه من الدخول
         if ($departments->isEmpty()) {
-            abort(403, 'User not assigned to any department.');
+            abort(403, 'No departments available in the system.');
         }
 
         return Inertia::render('Departments/Select', [
@@ -44,13 +50,15 @@ class DepartmentSelectionController extends Controller
 
         $departmentId = (int) $data['department_id'];
 
-        // التأكد أن المستخدم يملك صلاحية هذا القسم فعلياً
-        $belongsToDepartment = $request->user()
-            ->departments()
-            ->where('departments.id', $departmentId)
-            ->exists();
+        // التأكد أن المستخدم يملك صلاحية هذا القسم فعلياً (SuperAdmin يتخطى هذا الفحص)
+        if (!$request->user()->hasRole('SuperAdmin')) {
+            $belongsToDepartment = $request->user()
+                ->departments()
+                ->where('departments.id', $departmentId)
+                ->exists();
 
-        abort_unless($belongsToDepartment, 403, 'Unauthorized department access.');
+            abort_unless($belongsToDepartment, 403, 'Unauthorized department access.');
+        }
 
         $request->session()->put('selected_department_id', $departmentId);
 

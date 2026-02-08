@@ -22,7 +22,7 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
 <template>
     <div class="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased selection:bg-[#3d4adb]/10 selection:text-[#3d4adb]">
         <div class="flex h-screen overflow-hidden">
-            <!-- sGlobal Sidebwar (Desktop) -->
+            <!-- Global Sidebar (Desktop) -->
             <Sidebar class="hidden lg:flex" />
 
             <!-- Main Content Area -->
@@ -68,7 +68,7 @@ const hasFeature = (featureKey) => enabledFeatures.value.includes(featureKey);
                                     <DropdownLink :href="route('profile.edit')">
                                         <div class="flex items-center gap-3">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                            Profile Profile Settings
+                                            Profile Settings
                                         </div>
                                     </DropdownLink>
                                     <DropdownLink :href="route('logout')" method="post" as="button" class="!text-rose-600">

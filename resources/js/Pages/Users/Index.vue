@@ -361,7 +361,7 @@ const getRoleBadgeClass = (role) => {
 
                         <div class="space-y-1.5">
                             <InputLabel for="email" value="Email Address" />
-                            <TextInput id="email" type="email" v-model="form.email" class="w-full" placeholder="john@university.edu" required />
+                            <TextInput id="email" type="text" inputmode="email" v-model="form.email" class="w-full" placeholder="john@university.edu" required />
                             <InputError :message="form.errors.email" />
                         </div>
                     </div>

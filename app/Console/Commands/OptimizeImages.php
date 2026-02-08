@@ -86,6 +86,6 @@ class OptimizeImages extends Command
             ]
         );
         
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

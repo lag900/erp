@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Asset extends Model
 {
-    use HasFactory, SoftDeletes, \App\Traits\BelongsToDepartment;
+    use HasFactory, SoftDeletes, \App\Traits\BelongsToDepartment, \App\Traits\LogsActivity;
 
     protected $fillable = [
         'department_id', // Owner Department

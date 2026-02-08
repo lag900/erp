@@ -24,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
         \App\Models\Asset::observe(\App\Observers\AssetObserver::class);
+        \App\Models\User::observe(\App\Observers\UserObserver::class);
 
         \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Login::class, function ($event) {
             \App\Models\ActivityLog::create([

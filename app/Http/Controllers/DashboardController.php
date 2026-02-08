@@ -149,6 +149,7 @@ class DashboardController extends Controller
             'id' => $log->id,
             'action' => $log->action,
             'description' => $log->description,
+            'properties' => $log->properties, // Added for deep audit details
             'created_at' => $log->created_at,
             'user' => $log->user ? [
                 'id' => $log->user->id,

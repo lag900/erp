@@ -502,12 +502,28 @@ const currentDate = new Date().toLocaleDateString('en-US', {
                                                         <span class="font-bold text-[#3d4adb]">{{ log.user?.name || 'System' }}</span>
                                                         <span class="text-slate-500 ml-1">{{ log.description.toLowerCase().replace(log.user?.name.toLowerCase() || '', '').trim() }}</span>
                                                     </div>
-                                                    <div class="flex items-center gap-3 mt-2">
+
+                                                    <!-- Deep Audit Details (Old vs New) -->
+                                                    <div v-if="log.properties" class="mt-3 space-y-2">
+                                                        <div v-if="log.properties.attributes" class="rounded-xl bg-slate-50/50 border border-slate-100 p-3">
+                                                            <div v-for="(value, key) in log.properties.attributes" :key="key" class="text-[11px] mb-1.5 last:mb-0">
+                                                                <span class="font-bold text-slate-400 uppercase tracking-tighter mr-2">{{ key.replace('_', ' ') }}:</span>
+                                                                <span v-if="log.properties.old && log.properties.old[key] !== undefined" class="text-rose-500 line-through opacity-60 mr-2">{{ log.properties.old[key] }}</span>
+                                                                <span class="text-emerald-600 font-bold">{{ value }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <!-- Direct properties for user creation/role changes -->
+                                                        <div v-else-if="log.properties.role" class="rounded-xl bg-[#3d4adb]/5 border border-[#3d4adb]/10 p-2.5">
+                                                             <span class="text-[11px] font-bold text-[#3d4adb] uppercase tracking-widest">Access Level: {{ log.properties.role }}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-center gap-3 mt-3">
                                                         <span :class="['text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase tracking-widest border', getActivityColor(log.action)]">
                                                             {{ log.action.replace('_', ' ') }}
                                                         </span>
-                                                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                                                            {{ formatDate(log.created_at) }}
+                                                        <span class="text-[10px] text-slate-400 font-black tracking-tighter tabular-nums">
+                                                            {{ new Date(log.created_at).toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' }) }}
                                                         </span>
                                                     </div>
                                                 </div>

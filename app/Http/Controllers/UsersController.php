@@ -118,6 +118,11 @@ class UsersController extends Controller
             \Illuminate\Support\Facades\Log::info('Synced ' . $departmentIds->count() . ' departments for user: ' . $user->email);
         }
 
+        \App\Traits\LogsActivity::log('user_created', "System access granted: Account created for {$user->name} with role {$role->name}", $user, [
+            'role' => $role->name,
+            'departments' => $departmentIds->all(),
+        ]);
+
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
 
@@ -199,6 +204,11 @@ class UsersController extends Controller
         });
 
         $user->departments()->sync($pivotData->all());
+
+        \App\Traits\LogsActivity::log('user_updated', "Identity updated: Governance details modified for {$user->name}", $user, [
+            'role' => $role->name,
+            'department_ids' => $departmentIds->all(),
+        ]);
 
         return redirect()->route('users.index')->with('success', 'User updated successfully.');
     }

@@ -37,7 +37,7 @@ class AssetObserver
              $description = "Changed status of {$name} to {$asset->status}";
         }
 
-        $this->logActivity('updated', $description, $asset, $changes);
+        $asset->logChanges($description);
     }
 
     /**
@@ -70,7 +70,7 @@ class AssetObserver
     private function logActivity($action, $description, $asset, $properties = [])
     {
         \App\Models\ActivityLog::create([
-            'user_id' => auth()->id(),
+            'user_id' => \Illuminate\Support\Facades\Auth::id(),
             'action' => $action,
             'description' => $description,
             'subject_type' => get_class($asset),

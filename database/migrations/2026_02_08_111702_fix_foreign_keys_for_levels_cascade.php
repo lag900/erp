@@ -13,20 +13,39 @@ return new class extends Migration
     {
         // 1. Ensure levels -> rooms cascade
         Schema::table('rooms', function (Blueprint $table) {
-            $table->dropForeign(['level_id']);
-            $table->foreign('level_id')
+            try {
+                $table->dropForeign(['level_id']);
+            } catch (\Exception $e) {
+                // Constraint might not exist or has a different name
+            }
+            
+            // Re-add with cascade
+            try {
+                 $table->foreign('level_id')
                   ->references('id')
                   ->on('levels')
                   ->onDelete('cascade');
+            } catch (\Exception $e) {
+                // Constraint might already exist
+            }
         });
 
         // 2. Ensure rooms -> assets cascade
         Schema::table('assets', function (Blueprint $table) {
-            $table->dropForeign(['room_id']);
-            $table->foreign('room_id')
+             try {
+                $table->dropForeign(['room_id']);
+            } catch (\Exception $e) {
+                 // Constraint might not exist
+            }
+            
+            try {
+                $table->foreign('room_id')
                   ->references('id')
                   ->on('rooms')
                   ->onDelete('cascade');
+            } catch (\Exception $e) {
+                // Constraint might already exist
+            }
         });
     }
 

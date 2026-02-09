@@ -25,6 +25,8 @@ const page = usePage();
 const successMessage = ref(null);
 const countInput = ref(null);
 const isTableLoading = ref(false);
+const localRecentAdditions = ref(props.recentAdditions || []);
+const localRoomSummary = ref(props.roomAssetsSummary || []);
 
 const form = useForm({
     entry_type: 'individual', 
@@ -259,20 +261,34 @@ const removeComponentRow = (index) => {
     form.components.splice(index, 1);
 };
 
-const loadRoomContext = (roomId) => {
-    if (!roomId) return;
-    router.get(route('assets.create'), { room_id: roomId }, {
-        preserveState: true,
-        preserveScroll: true,
-        only: ['recentAdditions', 'roomAssetsSummary'],
-        onStart: () => { isTableLoading.value = true; },
-        onFinish: () => { isTableLoading.value = false; }
-    });
+const loadRoomContext = async (roomId) => {
+    if (!roomId) {
+        localRecentAdditions.value = [];
+        localRoomSummary.value = [];
+        return;
+    }
+    
+    isTableLoading.value = true;
+    try {
+        const response = await axios.get(route('api.rooms.context', { room: roomId }));
+        localRecentAdditions.value = response.data.recent;
+        localRoomSummary.value = response.data.summary;
+        
+        // Also update URL without a full page visit to maintain context if refreshed
+        const url = new URL(window.location.href);
+        url.searchParams.set('room_id', roomId);
+        window.history.replaceState({}, '', url);
+    } catch (error) {
+        console.error('Failed to load room context:', error);
+        if (window.showToast) window.showToast('error', 'Failed to load room activity data.');
+    } finally {
+        isTableLoading.value = false;
+    }
 };
 
 watch(() => form.room_id, (newVal) => {
-    if (newVal) loadRoomContext(newVal);
-});
+    loadRoomContext(newVal);
+}, { immediate: true });
 
 const setMode = (mode) => {
     form.entry_type = mode;
@@ -318,6 +334,9 @@ const handleSubmit = () => {
             form.is_parent = (savedEntryType === 'bundle');
 
             setTimeout(() => { successMessage.value = null; }, 4000);
+            
+            // Refresh room context to show the new asset in the table
+            loadRoomContext(savedRoomId);
             
             // Speed Mode: Auto-focus back to classification for next entry
             if (!form.is_parent) {
@@ -683,8 +702,16 @@ const getStatusLabel = (status) => {
                 <!-- Live Audit Trail (Enterprise High-Density Table) -->
                 <div v-if="form.room_id" class="space-y-3 pt-6">
                     <div class="flex items-center justify-between px-1">
-                        <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Recent Activity in this Room</h4>
-                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-gray-100 rounded">Live View</span>
+                        <h4 class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Current Room Inventory & Activity</h4>
+                        <span class="text-[9px] font-bold text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-gray-100 rounded">Live Context</span>
+                    </div>
+
+                    <!-- Room Statistics Summary -->
+                    <div v-if="localRoomSummary.length > 0" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                        <div v-for="stat in localRoomSummary.slice(0, 4)" :key="stat.category_id" class="bg-gray-50 border border-gray-100 rounded-lg p-2 flex flex-col items-center justify-center text-center">
+                            <span class="text-[9px] font-black text-gray-400 uppercase tracking-tighter truncate w-full px-1">{{ stat.category_name }}</span>
+                            <span class="text-xs font-black text-gray-900 mt-0.5">{{ stat.total_count }} <span class="text-[9px] text-gray-400 font-normal">items</span></span>
+                        </div>
                     </div>
 
                     <div class="bg-white border-y sm:border border-gray-200 sm:rounded overflow-hidden">
@@ -698,7 +725,7 @@ const getStatusLabel = (status) => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-50" :class="{ 'animate-pulse opacity-50': isTableLoading }">
-                                <tr v-for="asset in props.recentAdditions" :key="asset.id" class="border-b border-gray-50 text-[11px] hover:bg-gray-50/50">
+                                <tr v-for="asset in localRecentAdditions" :key="asset.id" class="border-b border-gray-50 text-[11px] hover:bg-gray-50/50">
                                     <td class="px-4 py-2">
                                         <div class="font-mono text-[#1FA6A0] text-[10px] font-black">{{ asset.full_serial || asset.asset_code }}</div>
                                         <div v-if="asset.bundle_serial" class="text-[8px] font-black text-gray-400 uppercase tracking-tighter mt-0.5">Reference: {{ asset.bundle_serial }}</div>
@@ -707,8 +734,11 @@ const getStatusLabel = (status) => {
                                     <td class="px-4 py-2 text-center text-gray-400 font-black uppercase">{{ asset.status }}</td>
                                     <td class="px-4 py-2 text-right text-gray-400 tabular-nums">{{ asset.time }}</td>
                                 </tr>
-                                <tr v-if="props.recentAdditions.length === 0">
+                                <tr v-if="localRecentAdditions.length === 0 && !isTableLoading">
                                     <td colspan="4" class="px-4 py-8 text-center text-gray-400 italic">No assets registered in this room today.</td>
+                                </tr>
+                                <tr v-if="isTableLoading && localRecentAdditions.length === 0">
+                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400">Loading activity...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -716,6 +746,7 @@ const getStatusLabel = (status) => {
                 </div>
 
                 <!-- Sticky Footer Action Bar (Context-Isolated & Sidebar-Aware) -->
+
                 <div v-if="$page.component === 'Assets/Create'" 
                     class="fixed bottom-0 left-0 lg:left-72 right-0 z-[100] bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-8px_30px_rgb(0,0,0,0.04)] px-4 py-4 sm:px-8"
                 >

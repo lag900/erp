@@ -1303,4 +1303,29 @@ class AssetsController extends Controller
         $result = $imageOptimizer->processImage($file, 'asset_infos', false);
         return $result['full'];
     }
+    public function getRoomContext(Room $room): JsonResponse
+    {
+        $roomAssetsSummary = $this->getRoomAssetsSummary($room->id);
+        
+        $recentAdditions = Asset::where('room_id', $room->id)
+            ->with(['category', 'subCategory', 'creator'])
+            ->orderByDesc('created_at')
+            ->take(10)
+            ->get()
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'asset_code' => $a->asset_code,
+                'bundle_serial' => $a->bundle_serial,
+                'full_serial' => $a->full_serial,
+                'name' => ($a->category?->name ?? 'Unknown') . ($a->subCategory ? " - {$a->subCategory->name}" : ""),
+                'status' => $a->status,
+                'time' => $a->created_at ? $a->created_at->diffForHumans() : 'N/A',
+                'created_by' => $a->creator?->name ?? 'System',
+            ]);
+
+        return response()->json([
+            'summary' => $roomAssetsSummary,
+            'recent' => $recentAdditions,
+        ]);
+    }
 }

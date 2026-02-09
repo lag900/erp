@@ -121,6 +121,9 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::get('/api/assets/search', [AssetsController::class, 'searchAssets'])
         ->middleware('permission:asset-list')
         ->name('api.assets.search');
+    Route::get('/api/rooms/{room}/context', [AssetsController::class, 'getRoomContext'])
+        ->name('api.rooms.context');
+
 
     Route::get('/locations', [LocationsController::class, 'index'])
         ->middleware('permission:location-list')

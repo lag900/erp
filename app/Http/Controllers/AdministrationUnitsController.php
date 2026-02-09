@@ -102,12 +102,18 @@ class AdministrationUnitsController extends Controller
 
     private function processAndStoreImage($file): string
     {
-        $filename = 'admin_' . time() . '_' . uniqid() . '.jpg';
+        $filename = 'admin_' . time() . '_' . uniqid() . '.webp';
         $path = 'administration/' . $filename;
 
         // Optimize using Intervention Image
         $img = Image::read($file);
-        $encoded = $img->toJpeg(80);
+
+        // Resize to a maximum width of 1200px
+        if ($img->width() > 1200) {
+            $img->scale(width: 1200);
+        }
+
+        $encoded = $img->toWebp(80);
         
         Storage::disk('public')->put($path, (string) $encoded);
 

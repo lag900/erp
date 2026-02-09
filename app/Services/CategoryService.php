@@ -12,6 +12,6 @@ class CategoryService
      */
     public function generateUniqueCode(string $name): string
     {
-        return CodeGeneratorService::generateModelCode($name, \App\Models\Category::class);
+        return CodeGeneratorService::generateModelCode($name, Category::class);
     }
 }

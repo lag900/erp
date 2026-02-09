@@ -27,4 +27,13 @@ class News extends Model
         'publish_date' => 'datetime',
         'publish_to_facebook' => 'boolean',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image 
+            ? asset('storage/' . $this->image) 
+            : null;
+    }
 }

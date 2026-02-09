@@ -14,6 +14,7 @@ class MediaSettingsController extends Controller
         $settings = MediaSetting::firstOrCreate([], [
             'fb_enabled' => false,
             'fb_auto_publish' => false,
+            'ig_enabled' => false,
         ]);
 
         return Inertia::render('Media/Settings/Edit', [
@@ -31,6 +32,9 @@ class MediaSettingsController extends Controller
             'fb_access_token' => 'nullable|string',
             'fb_enabled' => 'boolean',
             'fb_auto_publish' => 'boolean',
+            'ig_page_url' => 'nullable|url',
+            'ig_enabled' => 'boolean',
+            'ig_embed_token' => 'nullable|string',
         ]);
 
         $settings->update($validated);

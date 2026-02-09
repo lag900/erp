@@ -20,48 +20,33 @@ class AssetExport implements FromCollection, WithHeadings, WithMapping
         return $this->assets;
     }
 
-    public function headings(): array
+    public function map($asset): array
     {
-        if (isset($this->assets[0]) && isset($this->assets[0]->total)) {
-            return ['Category Name', 'Total Assets'];
-        }
-
         return [
-            'ID',
-            'Name',
-            'Code',
-            'Serial Number',
-            'Category',
-            'Subcategory',
-            'Building',
-            'Room',
-            'Status',
-            'Created At',
-            'Created By',
+            $asset->id,
+            $asset->description,
+            $asset->category->name ?? '',
+            $asset->subCategory->name ?? '',
+            $asset->building->name ?? '',
+            $asset->room->number ?? '',
+            $asset->custodian_id ? 'Yes' : 'No',
+            $asset->status,
+            $asset->created_at->format('Y-m-d'),
         ];
     }
 
-    public function map($asset): array
+    public function headings(): array
     {
-        if (isset($asset->total)) {
-            return [
-                $asset->category->name ?? 'Uncategorized',
-                $asset->total,
-            ];
-        }
-
         return [
-            $asset->id,
-            $asset->name,
-            $asset->code,
-            $asset->serial_number,
-            $asset->category->name ?? '-',
-            $asset->subCategory->name ?? '-',
-            $asset->building->name ?? '-',
-            $asset->room->name ?? '-',
-            $asset->status,
-            $asset->created_at->format('Y-m-d H:i'),
-            $asset->creator->name ?? '-',
+            'ID',
+            'Description',
+            'Category',
+            'Sub Category',
+            'Building',
+            'Room',
+            'Custodian',
+            'Status',
+            'Created At',
         ];
     }
 }

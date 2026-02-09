@@ -76,6 +76,17 @@ class Asset extends Model
     }
 
     /**
+     * Get the asset name from sub-category (Arabic preference)
+     */
+    public function getNameAttribute()
+    {
+        if ($this->subCategory) {
+            return $this->subCategory->name_ar ?: $this->subCategory->name;
+        }
+        return 'غير محدد'; // "Unspecified" in Arabic
+    }
+
+    /**
      * Get the asset image URL from its subcategory or category.
      */
     public function getImageUrlAttribute()

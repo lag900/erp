@@ -18,6 +18,12 @@ class Department extends Model
         'description',
         'university_logo',
         'department_logo',
+        'director_name',
+        'director_title',
+        'director_image',
+        'display_order',
+        'status',
+        'type',
     ];
 
     public function users(): BelongsToMany

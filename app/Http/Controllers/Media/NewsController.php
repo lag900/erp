@@ -30,7 +30,7 @@ class NewsController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'content' => 'nullable|string',
-            'image_file' => 'nullable|image|max:2048',
+            'image_file' => 'nullable|image|max:5120',
             'category' => 'nullable|string',
             'publish_date' => 'nullable|date',
             'status' => 'required|in:draft,published,archived',
@@ -38,8 +38,7 @@ class NewsController extends Controller
         ]);
 
         if ($request->hasFile('image_file')) {
-            $path = $request->file('image_file')->store('news', 'public');
-            $validated['image'] = Storage::url($path);
+            $validated['image'] = $this->processAndStoreImage($request->file('image_file'));
         }
 
         $news = News::create($validated);
@@ -64,7 +63,7 @@ class NewsController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'content' => 'nullable|string',
-            'image_file' => 'nullable|image|max:2048',
+            'image_file' => 'nullable|image|max:5120',
             'category' => 'nullable|string',
             'publish_date' => 'nullable|date',
             'status' => 'required|in:draft,published,archived',
@@ -72,19 +71,15 @@ class NewsController extends Controller
         ]);
 
         if ($request->hasFile('image_file')) {
-            // Delete old image
             if ($news->image) {
                 $oldPath = str_replace('/storage/', '', $news->image);
                 Storage::disk('public')->delete($oldPath);
             }
-            $path = $request->file('image_file')->store('news', 'public');
-            $validated['image'] = Storage::url($path);
+            $validated['image'] = $this->processAndStoreImage($request->file('image_file'));
         }
 
-        $oldStatus = $news->status;
         $news->update($validated);
 
-        // If status changed to published and FB is checked, or if already published and FB was just checked
         if ($news->status === 'published' && $news->publish_to_facebook && !$news->facebook_post_id && $news->facebook_publish_status !== 'pending') {
             PublishToFacebookJob::dispatch($news);
         }
@@ -100,5 +95,25 @@ class NewsController extends Controller
         }
         $news->delete();
         return redirect()->route('media.news.index')->with('success', 'News deleted successfully.');
+    }
+
+    private function processAndStoreImage($file): string
+    {
+        $filename = 'news_' . time() . '_' . uniqid() . '.webp';
+        $path = 'news/' . $filename;
+
+        // Optimize using Intervention Image
+        $img = \Intervention\Image\Laravel\Facades\Image::read($file);
+
+        // Resize to a maximum width of 1200px
+        if ($img->width() > 1200) {
+            $img->scale(width: 1200);
+        }
+
+        $encoded = $img->toWebp(80);
+        
+        Storage::disk('public')->put($path, (string) $encoded);
+
+        return Storage::url($path);
     }
 }

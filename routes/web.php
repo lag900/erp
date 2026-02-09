@@ -24,23 +24,16 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    $news = NewsModel::where('status', 'published')
-        ->orderBy('publish_date', 'desc')
-        ->take(3)
-        ->get();
+use App\Http\Controllers\Public\HomeController;
 
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-        'initialNews' => $news,
-    ]);
-});
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 Route::get('/api/news', [PublicNewsController::class, 'index'])->name('api.news.index');
 Route::get('/api/news/{id}', [PublicNewsController::class, 'show'])->name('api.news.show');
+
+// Public News Pages
+Route::get('/news', [PublicNewsController::class, 'listing'])->name('news.index');
+Route::get('/news/{id}', [PublicNewsController::class, 'read'])->name('news.show');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -260,6 +253,8 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
 
 Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:reports'])->group(function () {
         Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('permission:report-access')->name('reports.index');
+    Route::get('/reports/settings', [\App\Http\Controllers\ReportSettingsController::class, 'edit'])->middleware('permission:report-access')->name('reports.settings');
+    Route::post('/reports/settings', [\App\Http\Controllers\ReportSettingsController::class, 'update'])->middleware('permission:report-access')->name('reports.settings.update');
     Route::get('/reports/{type}', [\App\Http\Controllers\ReportController::class, 'view'])->middleware('permission:report-access')->name('reports.view');
 });
 

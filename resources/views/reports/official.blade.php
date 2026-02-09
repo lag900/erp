@@ -1,277 +1,203 @@
+@php
+    $bodyTextColor = $settings->body_text_color ?? '#1a1a1a';
+    $headerTextColor = $settings->header_text_color ?? '#000000';
+@endphp
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html dir="rtl" lang="ar" style="--body-color: {{ $bodyTextColor }}; --header-color: {{ $headerTextColor }};">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>{{ $title }}</title>
     <style>
-        @page {
-            margin: 1.5cm;
-            footer: page-footer;
-        }
         body {
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 10pt;
-            color: #1a1a1a;
-            direction: rtl;
             text-align: right;
-            line-height: 1.5;
+            color: var(--body-color, #1a1a1a);
         }
-        .header-table {
+        .header {
             width: 100%;
-            border-bottom: 3px solid #000;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+            color: var(--header-color, #000000);
         }
-        .logo {
-            max-height: 100px;
-            max-width: 120px;
+        .header-content {
+            display: table;
+            width: 100%;
         }
-        .header-center {
+        .logo-container {
+            display: table-cell;
+            vertical-align: middle;
+            width: 20%;
+        }
+        .header-text {
+            display: table-cell;
+            vertical-align: middle;
             text-align: center;
+            width: 60%;
         }
-        .header-center h1 {
-            font-size: 20pt;
-            margin: 0;
-            font-weight: bold;
-            color: #000;
-        }
-        .header-center h2 {
-            font-size: 14pt;
-            margin: 5px 0 0;
-            font-weight: normal;
-        }
-        .report-title-box {
-            margin-top: 15px;
+        .logo-img {
+            max-width: 80px;
+            max-height: 80px;
         }
         .report-title {
-            font-size: 16pt;
+            text-align: center;
+            font-size: 18px;
             font-weight: bold;
-            text-decoration: underline;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #ddd;
         }
-        
-        .info-grid {
-            width: 100%;
-            margin-bottom: 30px;
-            border: 1px solid #eee;
-            background: #fcfcfc;
-            border-radius: 8px;
-        }
-        .info-grid td {
-            padding: 12px;
-            border: 1px solid #f0f0f0;
-        }
-        .info-label {
-            font-size: 9pt;
-            color: #666;
-            margin-bottom: 3px;
-            display: block;
-        }
-        .info-value {
-            font-size: 11pt;
-            font-weight: bold;
-        }
-
-        table.data-table {
+        table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
+            font-size: 12px;
         }
-        table.data-table th {
-            background-color: #f8f9fa;
-            border: 1px solid #222;
-            padding: 10px 8px;
-            font-size: 9pt;
-            font-weight: bold;
-            text-align: center;
-        }
-        table.data-table td {
-            border: 1px solid #ccc;
+        th, td {
+            border: 1px solid #ddd;
             padding: 8px;
-            font-size: 9pt;
-            text-align: center;
+            text-align: right;
         }
-        .status-badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 8pt;
+        th {
+            background-color: #f2f2f2;
             font-weight: bold;
         }
-
-        .signatures-section {
-            margin-top: 60px;
+        .signatures {
+            margin-top: 50px;
             width: 100%;
+            page-break-inside: avoid;
         }
         .signature-box {
-            width: 33%;
+            float: right;
+            width: 30%;
             text-align: center;
-            vertical-align: top;
+            margin: 0 1.5%;
         }
-        .signature-label {
-            font-size: 11pt;
-            font-weight: bold;
-            margin-bottom: 50px;
+        .stamp-box {
+            clear: both;
+            margin-top: 20px;
+            text-align: center;
         }
-        .signature-line {
-            border-top: 1px solid #000;
-            width: 80%;
-            margin: 0 auto 5px;
-        }
-        .signature-name {
-            font-size: 9pt;
-            color: #444;
-        }
-
         .footer {
             position: fixed;
             bottom: 0;
-            width: 100%;
-            font-size: 8pt;
-            color: #999;
+            left: 0;
+            right: 0;
+            height: 30px;
             text-align: center;
-            border-top: 1px solid #eee;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
             padding-top: 5px;
+        }
+        @page {
+            margin: 100px 25px;
         }
     </style>
 </head>
 <body>
-    <table class="header-table">
-        <tr>
-            <td style="width: 20%; text-align: right;">
-                @if($department->university_logo)
-                    <img src="{{ public_path('storage/' . $department->university_logo) }}" class="logo">
-                @else
-                    <div style="width: 100px; height: 100px; border: 1px dashed #ccc; text-align: center; line-height: 100px; font-size: 8pt;">Logo</div>
+    <div class="header">
+        <div class="header-content">
+            <!-- Right Logo -->
+            <div class="logo-container" style="text-align: right;">
+                @if(!$settings->remove_right_logo && $settings->right_logo_path)
+                    <img src="{{ public_path('storage/' . $settings->right_logo_path) }}" class="logo-img" alt="Right Logo">
                 @endif
-            </td>
-            <td class="header-center" style="width: 60%;">
-                <h1>{{ config('app.org_name', 'جامعة الملك خالد') }}</h1>
-                <h2>{{ $department->arabic_name ?? $department->name }}</h2>
-                <div class="report-title-box">
-                    <span class="report-title">{{ $title }}</span>
+            </div>
+
+            <!-- Center Text -->
+            <div class="header-text">
+                @if($settings->header_line_1)
+                    <div style="font-weight: bold; font-size: 14px;">{{ $settings->header_line_1 }}</div>
+                @endif
+                @if($settings->header_line_2)
+                    <div style="font-size: 12px;">{{ $settings->header_line_2 }}</div>
+                @endif
+                @if($settings->header_line_3)
+                    <div style="font-size: 12px;">{{ $settings->header_line_3 }}</div>
+                @endif
+            </div>
+
+            <!-- Left Logo -->
+            <div class="logo-container" style="text-align: left;">
+                @if(!$settings->remove_left_logo && $settings->left_logo_path)
+                    <img src="{{ public_path('storage/' . $settings->left_logo_path) }}" class="logo-img" alt="Left Logo">
+                @endif
+            </div>
+        </div>
+        
+        @if(!$settings->remove_center_logo && $settings->center_logo_path)
+            <div style="text-align: center; margin-top: 10px;">
+                <img src="{{ public_path('storage/' . $settings->center_logo_path) }}" class="logo-img" alt="Center Logo" style="max-height: 60px;">
+            </div>
+        @endif
+    </div>
+
+    <div class="report-title">
+        {{ $settings->custom_header_title ?: $title }}
+    </div>
+
+    <div class="content">
+        <!-- Report Content Table -->
+        @if(isset($assets) && count($assets) > 0)
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 25%">الوصف</th>
+                        <th style="width: 15%">التصنيف</th>
+                        <th style="width: 15%">المبنى</th>
+                        <th style="width: 10%">الغرفة</th>
+                        <th style="width: 15%">العهدة</th>
+                        <th style="width: 15%">الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($assets as $index => $asset)
+                        <tr>
+                            <td>{{ $index + 1 }}</td>
+                            <td>{{ $asset->description }}</td>
+                            <td>{{ optional($asset->category)->name }}</td>
+                            <td>{{ optional($asset->building)->name }}</td>
+                            <td>{{ optional($asset->room)->number }}</td>
+                            <td>{{ $asset->custodian ? $asset->custodian->name : '-' }}</td>
+                            <td>{{ $asset->status }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <div style="text-align: center; padding: 20px;">
+                لا توجد بيانات للعرض
+            </div>
+        @endif
+    </div>
+
+    <!-- Signatures Section -->
+    @if(!empty($settings->signatures))
+        <div class="signatures">
+            @foreach($settings->signatures as $signature)
+                <div class="signature-box">
+                    <div style="font-weight: bold; margin-bottom: 40px;">{{ $signature['title'] }}</div>
+                    <div>{{ $signature['name'] }}</div>
                 </div>
-            </td>
-            <td style="width: 20%; text-align: left;">
-                @if($department->department_logo)
-                    <img src="{{ public_path('storage/' . $department->department_logo) }}" class="logo">
-                @endif
-            </td>
-        </tr>
-    </table>
-
-    <table class="info-grid">
-        <tr>
-            <td>
-                <span class="info-label">تاريخ التقرير / Report Date</span>
-                <span class="info-value">{{ $generated_at }}</span>
-            </td>
-            <td>
-                <span class="info-label">القسم المختص / Department</span>
-                <span class="info-value">{{ $department->arabic_name ?? $department->name }}</span>
-            </td>
-            <td>
-                <span class="info-label">إجمالي الأصول / Total Assets</span>
-                <span class="info-value">{{ count($assets) }}</span>
-            </td>
-            <td>
-                <span class="info-label">تم الاستخراج بواسطة / Generated By</span>
-                <span class="info-value">{{ $generated_by }}</span>
-            </td>
-        </tr>
-    </table>
-
-    @if($type === 'summary')
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width: 30px;">#</th>
-                <th style="text-align: right;">تصنيف الأصول / Asset Category</th>
-                <th>إجمالي العدد / Total Count</th>
-                <th>النسبة المئوية / Percentage</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php $grandTotal = $assets->sum('total'); @endphp
-            @foreach($assets as $index => $item)
-            <tr>
-                <td>{{ $index + 1 }}</td>
-                <td style="text-align: right; font-weight: bold;">{{ $item->category->name ?? 'Uncategorized' }}</td>
-                <td style="font-weight: bold;">{{ $item->total }}</td>
-                <td>{{ $grandTotal > 0 ? round(($item->total / $grandTotal) * 100, 1) : 0 }}%</td>
-            </tr>
             @endforeach
-        </tbody>
-        <tfoot>
-            <tr style="background-color: #eee;">
-                <td colspan="2" style="text-align: right; font-weight: bold;">الإجمالي / TOTAL</td>
-                <td style="font-weight: bold;">{{ $grandTotal }}</td>
-                <td style="font-weight: bold;">100%</td>
-            </tr>
-        </tfoot>
-    </table>
-    @else
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th style="width: 30px;">#</th>
-                <th>كود الأصل / Asset Code</th>
-                <th>اسم المادة / Asset Name</th>
-                <th>التصنيف / Category</th>
-                <th>الموقع / Location</th>
-                <th>الحالة / Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($assets as $index => $asset)
-            <tr>
-                <td>{{ $index + 1 }}</td>
-                <td style="font-family: 'monospace'; font-weight: bold;">{{ $asset->asset_code ?? $asset->code }}</td>
-                <td style="font-weight: bold;">{{ $asset->name }}</td>
-                <td>{{ $asset->category->name ?? '-' }}</td>
-                <td>
-                    {{ $asset->building->name ?? '' }} 
-                    {{ $asset->room ? ' - ' . $asset->room->name : '' }}
-                </td>
-                <td>
-                    @switch($asset->status)
-                        @case('new') جديد @break
-                        @case('active') مفعل @break
-                        @case('good') جيد @break
-                        @case('damaged') تالف @break
-                        @case('maintenance') صيانة @break
-                        @case('retired') مستبعد @break
-                        @default {{ $asset->status }}
-                    @endswitch
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+        </div>
     @endif
 
-    <table class="signatures-section">
-        <tr>
-            <td class="signature-box">
-                <div class="signature-label">إعداد بواسطة / Prepared By</div>
-                <div style="height: 60px;"></div>
-                <div class="signature-line"></div>
-                <div class="signature-name">الاسم: ........................................</div>
-            </td>
-            <td class="signature-box">
-                <div class="signature-label">مراجعة بواسطة / Reviewed By</div>
-                <div style="height: 60px;"></div>
-                <div class="signature-line"></div>
-                <div class="signature-name">الاسم: ........................................</div>
-            </td>
-            <td class="signature-box">
-                <div class="signature-label">اعتماد بواسطة / Approved By</div>
-                <div style="height: 60px;"></div>
-                <div class="signature-line"></div>
-                <div class="signature-name">الاسم: ........................................</div>
-            </td>
-        </tr>
-    </table>
+    <!-- Stamp Section -->
+    @if($settings->show_stamp)
+        <div class="stamp-box">
+            <div style="border: 2px dashed #ccc; display: inline-block; padding: 20px; border-radius: 10px;">
+                {{ $settings->stamp_label ?: 'ختم الإعتماد' }}
+            </div>
+        </div>
+    @endif
 
+    <!-- Footer -->
     <div class="footer">
-        هذا التقرير تم استخراجه آلياً من نظام إدارة الأصول (ERB) - {{ date('Y-m-d H:i') }}
+        {{ $settings->footer_text ?? 'Generated by Batu ERB System' }} - {{ date('Y-m-d H:i') }}
     </div>
 </body>
 </html>

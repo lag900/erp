@@ -119,7 +119,7 @@ class AppServiceProvider extends ServiceProvider
 
                         // 2. Ensure Governance Permission Group exists
                         $govGroup = \App\Models\PermissionGroup::firstOrCreate(
-                            ['name' => 'Governance'],
+                            ['name' => 'Governance & Security'],
                             ['description' => 'System Governance and Audit Monitoring', 'icon' => 'shield-check', 'sort_order' => 100]
                         );
 

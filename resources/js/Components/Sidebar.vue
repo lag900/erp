@@ -104,27 +104,7 @@ const Icon = defineComponent({
                 </div>
             </div>
 
-            <!-- System Governance (SuperAdmin Only) - Force Visible -->
-            <div v-if="$page.props.auth.roles.includes('SuperAdmin')">
-                <h3 class="px-3 mb-2.5 text-[10px] font-bold uppercase tracking-[0.15em] text-rose-500 flex items-center justify-between">
-                    Governance & Security
-                    <span class="h-px flex-1 bg-rose-100 ml-4"></span>
-                </h3>
-                <div class="space-y-1">
-                    <NavLink :href="route('dashboard')" :active="false">
-                        <Icon name="cog" :active="false" />
-                        System Governance
-                    </NavLink>
-                    <NavLink :href="route('audit.index')" :active="route().current('audit.index')">
-                        <Icon name="eye" :active="route().current('audit.index')" />
-                        Audit Trail
-                    </NavLink>
-                    <NavLink :href="route('audit.alerts')" :active="route().current('audit.alerts')">
-                        <Icon name="shield-exclamation" :active="route().current('audit.alerts')" />
-                        Security Center
-                    </NavLink>
-                </div>
-            </div>
+
 
             <!-- Empty State -->
             <div v-if="sidebarGroups.length === 0" class="px-6 py-10 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">

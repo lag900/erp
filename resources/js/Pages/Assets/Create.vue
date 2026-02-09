@@ -290,6 +290,14 @@ watch(() => form.room_id, (newVal) => {
     loadRoomContext(newVal);
 }, { immediate: true });
 
+// Sync with Inertia props when they are refreshed from server (e.g. after standard redirects)
+watch(() => props.recentAdditions, (newVal) => {
+    if (newVal) localRecentAdditions.value = newVal;
+});
+watch(() => props.roomAssetsSummary, (newVal) => {
+    if (newVal) localRoomSummary.value = newVal;
+});
+
 const setMode = (mode) => {
     form.entry_type = mode;
     form.is_parent = (mode === 'bundle');
@@ -735,7 +743,7 @@ const getStatusLabel = (status) => {
                                     <td class="px-4 py-2 text-right text-gray-400 tabular-nums">{{ asset.time }}</td>
                                 </tr>
                                 <tr v-if="localRecentAdditions.length === 0 && !isTableLoading">
-                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400 italic">No assets registered in this room today.</td>
+                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400 italic">No assets registered in this room.</td>
                                 </tr>
                                 <tr v-if="isTableLoading && localRecentAdditions.length === 0">
                                     <td colspan="4" class="px-4 py-8 text-center text-gray-400">Loading activity...</td>

@@ -68,24 +68,31 @@ class BuildingsController extends Controller
 
     public function store(StoreBuildingRequest $request)
     {
-        $data = $request->validated();
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+                $data = $request->validated();
 
-        // Generate building code
-        $data['code'] = CodeGeneratorService::generateBuildingCode(
-            $data['name_en'],
-            $data['location_id']
-        );
+                // Generate building code
+                $data['code'] = CodeGeneratorService::generateBuildingCode(
+                    $data['name_en'],
+                    $data['location_id']
+                );
 
-        // Name field for backward compatibility
-        $data['name'] = $data['name_en'];
+                // Name field for backward compatibility
+                $data['name'] = $data['name_en'];
 
-        if ($request->hasFile('image')) {
-            $data['image'] = $this->fileService->updateFile($request->file('image'), 'buildings');
+                if ($request->hasFile('image')) {
+                    $data['image'] = $this->fileService->updateFile($request->file('image'), 'buildings');
+                }
+
+                Building::create($data);
+
+                return redirect()->route('buildings.index')->with('success', 'Building created successfully.');
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Building creation failure: ' . $e->getMessage());
+            return back()->with('error', 'Critical error during building registration. Please try again.');
         }
-
-        Building::create($data);
-
-        return redirect()->route('buildings.index')->with('success', 'Building created successfully.');
     }
 
     public function edit(Building $building): Response

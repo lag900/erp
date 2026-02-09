@@ -53,20 +53,27 @@ class SubCategoriesController extends Controller
 
     public function store(StoreSubCategoryRequest $request)
     {
-        $data = $request->validated();
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+                $data = $request->validated();
 
-        // Auto Generate Code if not provided
-        if (empty($data['code'])) {
-            $data['code'] = CodeGeneratorService::generateModelCode($data['name'], SubCategory::class);
+                // Auto Generate Code if not provided
+                if (empty($data['code'])) {
+                    $data['code'] = CodeGeneratorService::generateModelCode($data['name'], SubCategory::class);
+                }
+
+                if ($request->hasFile('image')) {
+                    $data['image'] = $this->fileService->updateFile($request->file('image'), 'subcategories');
+                }
+
+                SubCategory::create($data);
+
+                return redirect()->route('subcategories.index')->with('success', 'Sub-category created successfully.');
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to create subcategory: ' . $e->getMessage());
+            return back()->with('error', 'Could not create subcategory. The system encountered a conflict or error. Please try again.');
         }
-
-        if ($request->hasFile('image')) {
-            $data['image'] = $this->fileService->updateFile($request->file('image'), 'subcategories');
-        }
-
-        SubCategory::create($data);
-
-        return redirect()->route('subcategories.index')->with('success', 'Sub-category created successfully.');
     }
 
     public function edit(SubCategory $subCategory): Response

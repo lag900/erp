@@ -13,31 +13,29 @@ class CodeGeneratorService
 
         // Fallback if no valid English characters
         if (empty(trim($clean))) {
-            return 'BLD-' . time();
+            $baseCode = 'BLD';
+        } else {
+            $words = array_filter(explode(' ', trim($clean)));
+            $code = '';
+            
+            foreach ($words as $word) {
+                if (!empty($word)) {
+                    $code .= strtoupper(substr($word, 0, 1));
+                }
+            }
+            $baseCode = empty($code) ? 'BLD' : $code;
         }
 
-        $words = array_filter(explode(' ', trim($clean)));
-        $code = '';
-        
-        foreach ($words as $word) {
-            if (!empty($word)) {
-                $code .= strtoupper(substr($word, 0, 1));
-            }
+        $code = $baseCode;
+        $counter = 1;
+
+        // Ensure uniqueness within the location
+        while (Building::where('location_id', $locationId)->where('code', $code)->exists()) {
+            $code = $baseCode . '-' . $counter;
+            $counter++;
         }
-        
-        // Fallback if no valid code generated
-        if (empty($code)) {
-            $code = 'BLD';
-        }
-        
-        $baseCode = $code;
-        
-        // Check for duplicates within same location
-        $count = Building::where('location_id', $locationId)
-            ->where('code', 'LIKE', $baseCode . '%')
-            ->count();
-        
-        return $count ? $baseCode . '-' . ($count + 1) : $baseCode;
+
+        return $code;
     }
 
     public static function generateModelCode(string $name, string $modelClass): string
@@ -46,19 +44,19 @@ class CodeGeneratorService
         $cleanName = preg_replace('/[^A-Za-z0-9]/', '', $name);
         $base = strtoupper(substr($cleanName, 0, 3));
         
-        if (empty($base)) {
+        if (empty($base) || strlen($base) < 2) {
             $base = 'CAT'; // Default fallback
         }
 
-        // Count existing records starting with this base
-        $count = $modelClass::where('code', 'LIKE', $base . '%')->count();
-        
-        if ($count === 0) {
-            return $base;
+        $code = $base;
+        $counter = 1;
+
+        // Iteratively check for uniqueness to avoid duplicate key errors
+        while ($modelClass::where('code', $code)->exists()) {
+            $code = $base . $counter;
+            $counter++;
         }
 
-        // COM (count 1) -> COM1
-        // COM, COM1 (count 2) -> COM2
-        return $base . $count;
+        return $code;
     }
 }

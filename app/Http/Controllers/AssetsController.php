@@ -139,7 +139,6 @@ class AssetsController extends Controller
                 $recentAdditions = Asset::where('room_id', $roomId)
                     ->with(['category', 'subCategory', 'creator'])
                     ->orderByDesc('created_at')
-                    ->take(10)
                     ->get()
                     ->map(fn($a) => [
                         'id' => $a->id,
@@ -148,7 +147,7 @@ class AssetsController extends Controller
                         'full_serial' => $a->full_serial,
                         'name' => ($a->category?->name ?? 'Unknown') . ($a->subCategory ? " - {$a->subCategory->name}" : ""),
                         'status' => $a->status,
-                        'time' => $a->created_at->diffForHumans(),
+                        'time' => $a->created_at ? $a->created_at->diffForHumans() : 'N/A',
                         'created_by' => $a->creator?->name ?? 'System',
                     ]);
             }
@@ -1310,7 +1309,6 @@ class AssetsController extends Controller
         $recentAdditions = Asset::where('room_id', $room->id)
             ->with(['category', 'subCategory', 'creator'])
             ->orderByDesc('created_at')
-            ->take(10)
             ->get()
             ->map(fn($a) => [
                 'id' => $a->id,

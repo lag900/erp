@@ -417,7 +417,7 @@ class AssetsController extends Controller
             }
 
             if (!empty($data['infos'])) {
-                $this->syncSpecTemplates($subCategory->category_id, $data['infos'] ?? []);
+                $this->syncSpecTemplates($data['category_id'], $data['infos'] ?? []);
             }
             
               if ($data['is_parent'] ?? false) {

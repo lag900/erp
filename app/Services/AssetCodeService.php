@@ -25,13 +25,14 @@ class AssetCodeService
         $parts[] = config('app.university_code', 'BAU');
         
         // 2. Smart Building Code (SYS)
-        $parts[] = $this->getSmartBuildingCode($room->level->building);
+        $building = $room?->level?->building;
+        $parts[] = $building ? $this->getSmartBuildingCode($building) : 'GEN';
         
         // 3. Floor (2 digits) (BLD)
-        $parts[] = $this->formatFloor($room->level);
+        $parts[] = $room?->level ? $this->formatFloor($room->level) : '00';
         
         // 4. Room Number (ROOM)
-        $parts[] = $room->code;
+        $parts[] = $room?->code ?: '000';
         
         // 5. Category Code (3 letters) (CATEGORY)
         $parts[] = $this->generateSmartCode($category->name ?? 'GEN', 3);

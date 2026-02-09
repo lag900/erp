@@ -40,20 +40,29 @@ class CodeGeneratorService
 
     public static function generateModelCode(string $name, string $modelClass): string
     {
-        // Keep only alphanumeric and convert to uppercase
+        // Derivation Logic: Keep only alphanumeric and convert to uppercase
         $cleanName = preg_replace('/[^A-Za-z0-9]/', '', $name);
         $base = strtoupper(substr($cleanName, 0, 3));
         
         if (empty($base) || strlen($base) < 2) {
-            $base = 'CAT'; // Default fallback
+            $base = 'SC'; // Default fallback for Sub-Category or category
         }
 
-        $code = $base;
+        return self::makeUnique($base, $modelClass);
+    }
+
+    /**
+     * Ensure any given code is unique for the model by appending numeric suffix
+     */
+    public static function makeUnique(string $base, string $modelClass, string $column = 'code'): string
+    {
+        $code = strtoupper($base);
         $counter = 1;
 
         // Iteratively check for uniqueness to avoid duplicate key errors
-        while ($modelClass::where('code', $code)->exists()) {
-            $code = $base . $counter;
+        // This handles race conditions if called within a DB transaction
+        while ($modelClass::where($column, $code)->exists()) {
+            $code = strtoupper($base) . $counter;
             $counter++;
         }
 

@@ -8,7 +8,9 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Services\CategoryService;
 use App\Services\FileService;
+use App\Services\CodeGeneratorService;
 use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -133,18 +135,30 @@ class CategoriesController extends Controller
 
     public function update(UpdateCategoryRequest $request, Category $category)
     {
-        $data = $request->validated();
-        unset($data['image']);
+        try {
+            return DB::transaction(function () use ($request, $category) {
+                $data = $request->validated();
+                unset($data['image']);
 
-        // Handle Image with Automatic Old Image Deletion
-        if ($request->hasFile('image')) {
-            $data['image'] = $this->fileService->updateFile($request->file('image'), 'categories', $category->image);
+                // Ensure unique code if provided and changed
+                if (!empty($data['code']) && $data['code'] !== $category->code) {
+                    $data['code'] = CodeGeneratorService::makeUnique($data['code'], Category::class);
+                }
+
+                // Handle Image with Automatic Old Image Deletion
+                if ($request->hasFile('image')) {
+                    $data['image'] = $this->fileService->updateFile($request->file('image'), 'categories', $category->image);
+                }
+
+                $category->update($data);
+                $category->departments()->sync($data['department_ids']);
+
+                return redirect()->route('categories.index')->with('success', 'Category updated successfully.');
+            });
+        } catch (\Exception $e) {
+            Log::error('Failed to update category: ' . $e->getMessage());
+            return back()->with('error', 'Could not update category due to a system error.');
         }
-
-        $category->update($data);
-        $category->departments()->sync($data['department_ids']);
-
-        return redirect()->route('categories.index')->with('success', 'Category updated successfully.');
     }
 
     public function destroy(Category $category, Request $request)

@@ -35,10 +35,10 @@ class AssetCodeService
         $parts[] = $room?->code ?: '000';
         
         // 5. Category Code (3 letters) (CATEGORY)
-        $parts[] = $this->generateSmartCode($category->name ?? 'GEN', 3);
+        $parts[] = $category ? ($category->code ?: $this->generateSmartCode($category->name ?? 'GEN', 3)) : 'GEN';
         
         // 6. Subcategory Code (3 letters) (SUB)
-        $parts[] = $this->generateSmartCode($subCategory->name ?? 'GEN', 3);
+        $parts[] = $subCategory ? ($subCategory->code ?: $this->generateSmartCode($subCategory->name ?? 'GEN', 3)) : 'GEN';
         
         // --- Group & Bundle Logic ---
         $groupPrefix = $asset->category_prefix;

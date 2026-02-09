@@ -57,9 +57,11 @@ class SubCategoriesController extends Controller
             return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
                 $data = $request->validated();
 
-                // Auto Generate Code if not provided
+                // Auto Generate or Safeguard provided code
                 if (empty($data['code'])) {
                     $data['code'] = CodeGeneratorService::generateModelCode($data['name'], SubCategory::class);
+                } else {
+                    $data['code'] = CodeGeneratorService::makeUnique($data['code'], SubCategory::class);
                 }
 
                 if ($request->hasFile('image')) {
@@ -96,16 +98,28 @@ class SubCategoriesController extends Controller
 
     public function update(UpdateSubCategoryRequest $request, SubCategory $subCategory)
     {
-        $data = $request->validated();
-        unset($data['image']);
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $subCategory) {
+                $data = $request->validated();
+                unset($data['image']);
 
-        if ($request->hasFile('image')) {
-            $data['image'] = $this->fileService->updateFile($request->file('image'), 'subcategories', $subCategory->image);
+                // Ensure unique code if provided and changed
+                if (!empty($data['code']) && $data['code'] !== $subCategory->code) {
+                    $data['code'] = CodeGeneratorService::makeUnique($data['code'], SubCategory::class);
+                }
+
+                if ($request->hasFile('image')) {
+                    $data['image'] = $this->fileService->updateFile($request->file('image'), 'subcategories', $subCategory->image);
+                }
+
+                $subCategory->update($data);
+
+                return redirect()->route('subcategories.index')->with('success', 'Sub-category updated successfully.');
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to update subcategory: ' . $e->getMessage());
+            return back()->with('error', 'Could not update subcategory. A conflict or error occurred.');
         }
-
-        $subCategory->update($data);
-
-        return redirect()->route('subcategories.index')->with('success', 'Sub-category updated successfully.');
     }
 
     public function destroy(SubCategory $subCategory, Request $request)

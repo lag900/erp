@@ -129,7 +129,9 @@ const deleteRoom = (roomId) => {
                         <tbody class="divide-y divide-gray-200 bg-white">
                             <tr v-for="room in filteredRooms" :key="room.id" class="transition-colors hover:bg-gray-50">
                                 <td class="px-6 py-4 font-medium text-gray-900">
-                                    {{ room.name }}
+                                    <Link :href="route('rooms.show', room.id)" class="hover:text-primary transition-colors">
+                                        {{ room.name }}
+                                    </Link>
                                 </td>
                                 <td class="px-6 py-4 text-gray-500">
                                     <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">

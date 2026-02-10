@@ -13,7 +13,11 @@ class DepartmentSelectionController extends Controller
     {
         $user = $request->user();
         
-        if ($user->hasRole('SuperAdmin')) {
+        // Extended Global Admin: SuperAdmin OR (Admin/Manager within ADMIN department)
+        $isGlobalAdmin = $user->hasRole('SuperAdmin') || 
+                        ($user->hasAnyRole(['Admin', 'Manager']) && $user->departments()->where('departments.code', 'ADMIN')->exists());
+
+        if ($isGlobalAdmin) {
             $departments = \App\Models\Department::select('id', 'name')
                 ->orderBy('name')
                 ->get();
@@ -26,12 +30,13 @@ class DepartmentSelectionController extends Controller
 
         // تجربة مستخدم محسنة: إذا كان لديه قسم واحد فقط، إعادته للوحة التحكم فوراً
         if ($departments->count() === 1) {
-            $departmentId = $departments->first()->id;
-            $request->session()->put('selected_department_id', $departmentId);
+            $dept = $departments->first();
+            $request->session()->put('selected_department_id', $dept->id);
+            // Ensure strict global visibility for Mother Department staff
+            $request->session()->put('is_admin_department', $dept->isAdmin() && $user->hasAnyRole(['SuperAdmin', 'Admin', 'Manager']));
             return redirect()->intended(route('dashboard'));
         }
 
-        // إذا لم يكن لديه أي قسم، منعه من الدخول
         if ($departments->isEmpty()) {
             abort(403, 'No departments available in the system.');
         }
@@ -49,9 +54,13 @@ class DepartmentSelectionController extends Controller
         ]);
 
         $departmentId = (int) $data['department_id'];
+        $department = \App\Models\Department::findOrFail($departmentId);
 
-        // التأكد أن المستخدم يملك صلاحية هذا القسم فعلياً (SuperAdmin يتخطى هذا الفحص)
-        if (!$request->user()->hasRole('SuperAdmin')) {
+        // Extended Global Admin: SuperAdmin OR (Admin/Manager within ADMIN department)
+        $isGlobalAdmin = $request->user()->hasRole('SuperAdmin') || 
+                        ($request->user()->hasAnyRole(['Admin', 'Manager']) && $request->user()->departments()->where('departments.code', 'ADMIN')->exists());
+
+        if (!$isGlobalAdmin) {
             $belongsToDepartment = $request->user()
                 ->departments()
                 ->where('departments.id', $departmentId)
@@ -61,6 +70,8 @@ class DepartmentSelectionController extends Controller
         }
 
         $request->session()->put('selected_department_id', $departmentId);
+        // Ensure strict global visibility for Mother Department staff
+        $request->session()->put('is_admin_department', $department->isAdmin() && $request->user()->hasAnyRole(['SuperAdmin', 'Admin', 'Manager']));
 
         return redirect()->intended(route('dashboard'));
     }

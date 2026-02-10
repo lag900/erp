@@ -16,13 +16,41 @@ class UsersController extends Controller
 {
     public function index(Request $request): Response
     {
-        $departmentId = $request->session()->get('selected_department_id');
-
         /** @var \App\Models\User $authUser */
         $authUser = $request->user();
+        $isGlobalAdmin = session('is_admin_department');
 
+        // 1. Hierarchy Logic: "If I have 20 roles (permissions), I see 1-19"
+        // Calculate current user's weight based on their primary role's permission count
+        $authUserRole = $authUser->roles->first();
+        $myAuthWeight = $authUserRole ? $authUserRole->permissions()->count() : 0;
+
+        // Get IDs of roles that are strictly lower in hierarchy
+        $allowedRoleIds = Role::withCount('permissions')
+            ->get()
+            ->filter(fn ($role) => $role->permissions_count < $myAuthWeight)
+            ->pluck('id');
+
+        $departmentId = $request->session()->get('selected_department_id');
+        
+        // 2. Department Scope: If not Global Admin, restrict to own departments
+        // 3. User Filter: Apply hierarchy and department constraints
         $users = User::with(['roles', 'departments'])
-            ->when($departmentId && $authUser->role !== 'super_admin', fn ($query) => $query->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId)))
+            ->when(!$isGlobalAdmin, function ($query) use ($authUser, $allowedRoleIds, $departmentId) {
+                // Constraint A: Strict Role Hierarchy (Lower Level Only)
+                $query->whereHas('roles', function ($q) use ($allowedRoleIds) {
+                    $q->whereIn('id', $allowedRoleIds);
+                });
+
+                // Constraint B: Department Isolation
+                // If a specific context is selected, use it. Otherwise, restrict to any of the user's departments.
+                if ($departmentId) {
+                    $query->whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId));
+                } else {
+                    $myDeptIds = $authUser->departments->pluck('id');
+                    $query->whereHas('departments', fn ($q) => $q->whereIn('departments.id', $myDeptIds));
+                }
+            })
             ->orderBy('name')
             ->get()
             ->map(function (User $user) {
@@ -44,9 +72,9 @@ class UsersController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $departments = Department::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $departments = $isGlobalAdmin 
+            ? Department::select('id', 'name')->orderBy('name')->get()
+            : $authUser->departments()->select('departments.id', 'departments.name')->orderBy('departments.name')->get();
 
         return Inertia::render('Users/Index', [
             'users' => $users,
@@ -55,15 +83,18 @@ class UsersController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $roles = Role::query()
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $departments = Department::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $authUser = $request->user();
+        $isGlobalAdmin = session('is_admin_department');
+
+        $departments = $isGlobalAdmin 
+            ? Department::select('id', 'name')->orderBy('name')->get()
+            : $authUser->departments()->select('departments.id', 'departments.name')->orderBy('departments.name')->get();
 
         return Inertia::render('Users/Create', [
             'roles' => $roles,
@@ -128,15 +159,18 @@ class UsersController extends Controller
         return redirect()->route('users.index')->with('success', 'User created successfully.');
     }
 
-    public function edit(User $user): Response
+    public function edit(Request $request, User $user): Response
     {
         $roles = Role::query()
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $departments = Department::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $authUser = $request->user();
+        $isGlobalAdmin = session('is_admin_department');
+
+        $departments = $isGlobalAdmin 
+            ? Department::select('id', 'name')->orderBy('name')->get()
+            : $authUser->departments()->select('departments.id', 'departments.name')->orderBy('departments.name')->get();
 
         $user->load('roles', 'departments');
 

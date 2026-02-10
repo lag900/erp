@@ -28,16 +28,17 @@ class ReportController extends Controller
     public function view(Request $request, $type)
     {
         $user = Auth::user();
-        $department = $user->department;
+        $selectedDepartmentId = session('selected_department_id');
+        $department = $selectedDepartmentId ? Department::find($selectedDepartmentId) : null;
 
         if (!$department) {
             return redirect()->route('dashboard')
-                ->with('error', 'You must be assigned to a department to access reports.');
+                ->with('error', 'Please select a department to access reports.');
         }
 
         // Build query based on report type
-        $query = Asset::with(['category', 'subCategory', 'building', 'room', 'custodian'])
-            ->where('department_id', $department->id);
+        // Global Scope handles visibility automatically
+        $query = Asset::with(['category', 'subCategory', 'building', 'room', 'custodian']);
 
         // Apply report type filters
         switch ($type) {
@@ -58,9 +59,7 @@ class ReportController extends Controller
                 break;
             case 'summary':
                 // Group by category
-                $assets = Category::withCount(['assets' => function ($q) use ($department) {
-                    $q->where('department_id', $department->id);
-                }])
+                $assets = Category::withCount(['assets']) // Global Scope on Asset handles constraints
                 ->having('assets_count', '>', 0)
                 ->get()
                 ->map(function ($category) {

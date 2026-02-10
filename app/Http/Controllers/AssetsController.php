@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\AssetInfo;
 use App\Models\AssetGroupType;
+use App\Models\AssetMovement;
 use App\Models\Category;
 use App\Models\Room;
 use App\Models\SubCategory;
 use App\Models\SpecTemplate;
+use App\Models\Department;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -99,12 +101,17 @@ class AssetsController extends Controller
                 ],
             ]);
 
-        // Meta for filters
+        $authUser = $request->user();
+        $isGlobalAdmin = session('is_admin_department');
+
+        // Meta for filters - Scoped by Global Scopes automatically
         $buildings = \App\Models\Building::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
         
-        // Departments meta
-        $departments = \App\Models\Department::orderBy('name')->get(['id', 'name']);
+        // Departments meta - Restricted to user's assigned departments unless Global Admin
+        $departments = $isGlobalAdmin 
+            ? Department::orderBy('name')->get(['id', 'name'])
+            : $authUser->departments()->select('departments.id', 'departments.name')->orderBy('departments.name')->get();
         
         // Users (Creators) meta - showing only users who have created assets
         $creators = \App\Models\User::whereHas('createdAssets')->orderBy('name')->get(['id', 'name']);
@@ -128,7 +135,13 @@ class AssetsController extends Controller
             
             $rooms = $this->getRoomsForSelection() ?? collect([]);
             $classifications = $this->getClassificationsForSelection() ?? collect([]);
-            $departments = \App\Models\Department::orderBy('name')->get(['id', 'name']) ?? collect([]);
+            
+            $authUser = $request->user();
+            $isGlobalAdmin = $authUser->hasRole('SuperAdmin') && $authUser->departments()->where('departments.code', 'ADMIN')->exists();
+
+            $departments = $isGlobalAdmin 
+                ? Department::select('id', 'name')->orderBy('name')->get()
+                : $authUser->departments()->select('departments.id', 'departments.name')->orderBy('departments.name')->get();
             
             $roomAssetsSummary = [];
             $recentAdditions = [];
@@ -180,7 +193,8 @@ class AssetsController extends Controller
 
     private function getRoomsForSelection()
     {
-        return Room::with('level.building.location')
+        return Room::whereHas('level.building') // Ensures building is visible via Global Scope
+            ->with('level.building.location')
             ->orderBy('name')
             ->get()
             ->map(function (Room $room) {
@@ -191,11 +205,11 @@ class AssetsController extends Controller
                     $location?->name,
                     $building?->name,
                     $level?->name,
-                    $room->name,
+                    $room->name, 
                 ]);
 
                 return [
-                    'id' => $room->id,
+                    'id' => $room->id, 
                     'label' => implode(' - ', $parts),
                 ];
             });
@@ -337,8 +351,19 @@ class AssetsController extends Controller
         }
         
         $data = $request->validate($rules);
-        $assetCodeService = app(\App\Services\AssetCodeService::class);
+        
+        // Strict Access Check
         $room = Room::with('level.building')->find($data['room_id']);
+        if (!$room || !$room->level?->building) {
+             return back()->with('error', 'Unauthorized access to selected room.');
+        }
+
+        $category = Category::find($data['category_id']);
+        if (!$category) {
+             return back()->with('error', 'Unauthorized access to selected category.');
+        }
+
+        $assetCodeService = app(\App\Services\AssetCodeService::class);
 
         $asset = DB::transaction(function () use ($data, $departmentId, $request, $assetCodeService, $room) {
             $isSeries = $data['entry_type'] === 'series';
@@ -503,9 +528,9 @@ class AssetsController extends Controller
 
     public function addComponents(Request $request, Asset $asset)
     {
-        $departmentId = $request->session()->get('selected_department_id');
-        $isOwner = $asset->department_id === $departmentId;
-        abort_unless($isOwner, 403, 'Unauthorized access to this asset.');
+        $isGlobalAdmin = session('is_admin_department');
+        $canManage = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
+        abort_unless($canManage, 403, 'Unauthorized access to this asset.');
         
         if (!$asset->is_parent) {
             return redirect()->route('assets.show', $asset->id);
@@ -527,9 +552,9 @@ class AssetsController extends Controller
 
     public function storeComponents(Request $request, Asset $parent): JsonResponse
     {
-        $departmentId = $request->session()->get('selected_department_id');
-        $isOwner = $parent->department_id === $departmentId;
-        abort_unless($isOwner, 403, 'Unauthorized access to this parent asset.');
+        $isGlobalAdmin = session('is_admin_department');
+        $canManage = $isGlobalAdmin || Asset::where('id', $parent->id)->exists();
+        abort_unless($canManage, 403, 'Unauthorized access to this parent asset.');
 
         $data = $request->validate([
             'components' => ['required', 'array', 'min:1'],
@@ -632,12 +657,11 @@ class AssetsController extends Controller
                 'groupType'
             ]);
 
-            // 3. Permission & Shared Access Verification
-            $isOwner = $asset->department_id == $departmentId;
-            $isShared = $asset->sharedDepartments->pluck('id')->contains($departmentId); 
-            $isSuperAdmin = $request->user()?->hasRole('SuperAdmin') ?? false;
+            // 3. Permission & Visibility Verification (Enterprise ERP Logic)
+            $isGlobalAdmin = session('is_admin_department');
+            $isVisible = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
 
-            if (!$isOwner && !$isShared && !$isSuperAdmin) {
+            if (!$isVisible) {
                 abort(403, 'Unauthorized access to this asset record across departments.');
             }
 
@@ -657,7 +681,7 @@ class AssetsController extends Controller
             return Inertia::render('Assets/Show', [
                 'asset' => $this->formatAssetDetails($asset),
                 'roomAssetsSummary' => $roomAssetsSummary,
-                'departments' => \App\Models\Department::orderBy('name')->get(['id', 'name']),
+                'departments' => Department::orderBy('name')->get(['id', 'name']),
             ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Asset View Error: " . $e->getMessage());
@@ -665,7 +689,7 @@ class AssetsController extends Controller
             return Inertia::render('Assets/Show', [
                 'asset' => null,
                 'errorMessage' => $e->getMessage(),
-                'departments' => \App\Models\Department::orderBy('name')->get(['id', 'name']),
+                'departments' => Department::orderBy('name')->get(['id', 'name']),
             ]);
         }
     }
@@ -675,10 +699,10 @@ class AssetsController extends Controller
         $user = $request->user();
         $departmentId = $request->session()->get('selected_department_id');
         
-        $isSuperAdmin = $user->hasRole('SuperAdmin');
-        $isOwner = $asset->department_id === $departmentId;
+        $isGlobalAdmin = session('is_admin_department');
+        $canManage = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
 
-        if (!$isSuperAdmin && !$isOwner) {
+        if (!$canManage) {
             return redirect()->back()->with('error', 'Unauthorized access. This asset belongs to another department.');
         }
 
@@ -697,11 +721,9 @@ class AssetsController extends Controller
         $departmentId = $request->session()->get('selected_department_id');
         $search = $request->input('search');
 
+        $isGlobal = session('is_admin_department');
         $query = Asset::query();
-
-        if (!$user->hasRole('SuperAdmin')) {
-            $query->where('department_id', $departmentId);
-        }
+        // Global scope BelongsToDepartment handles visibility (Owned + Shared via Category)
 
         $assets = $query->whereNull('parent_id')
             ->where('id', '!=', $request->input('exclude_id'))
@@ -729,10 +751,10 @@ class AssetsController extends Controller
         $user = $request->user();
         $departmentId = $request->session()->get('selected_department_id');
         
-        $isSuperAdmin = $user->hasRole('SuperAdmin');
-        $isOwner = $asset->department_id === $departmentId;
+        $isGlobalAdmin = session('is_admin_department');
+        $canManage = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
 
-        if (!$isSuperAdmin && !$isOwner) {
+        if (!$canManage) {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
@@ -768,7 +790,7 @@ class AssetsController extends Controller
     {
         $departmentId = $request->session()->get('selected_department_id');
         $user = $request->user();
-        if (!$user->hasRole('SuperAdmin') && $asset->department_id !== $departmentId) {
+        if (!(session('is_admin_department') || Asset::where('id', $asset->id)->exists())) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -859,7 +881,7 @@ class AssetsController extends Controller
         $user = $request->user();
         $departmentId = $request->session()->get('selected_department_id');
         
-        if (!$user->hasRole('SuperAdmin') && $asset->department_id !== $departmentId) {
+        if (!(session('is_admin_department') || Asset::where('id', $asset->id)->exists())) {
             return redirect()->back()->with('error', 'Unauthorized.');
         }
 
@@ -880,7 +902,7 @@ class AssetsController extends Controller
         $user = $request->user();
         $departmentId = $request->session()->get('selected_department_id');
         
-        if (!$user->hasRole('SuperAdmin') && $asset->department_id !== $departmentId) {
+        if (!(session('is_admin_department') || Asset::where('id', $asset->id)->exists())) {
             return redirect()->back()->with('error', 'Unauthorized.');
         }
 
@@ -1009,17 +1031,17 @@ class AssetsController extends Controller
             'classifications' => $this->getClassificationsForSelection(),
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'subCategories' => SubCategory::orderBy('name')->get(['id', 'name', 'category_id']),
-            'departments' => \App\Models\Department::orderBy('name')->get(['id', 'name']),
+            'departments' => Department::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
     public function update(Request $request, Asset $asset): RedirectResponse
     {
         try {
-            $departmentId = $request->session()->get('selected_department_id');
-            $isOwner = $asset->department_id === $departmentId;
-            $isSuperAdmin = $request->user()->hasRole('SuperAdmin');
-            abort_unless($isOwner || $isSuperAdmin, 403);
+            $isGlobalAdmin = session('is_admin_department');
+            // Enterprise Rule: Visibility via category sharing equals Full Control (Edit/Update)
+            $canUpdate = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
+            abort_unless($canUpdate, 403, 'Insufficient permissions to update this asset.');
 
             $data = $request->validate([
                 'room_id' => ['required', 'integer', 'exists:rooms,id'],
@@ -1037,6 +1059,17 @@ class AssetsController extends Controller
                 'infos.*.value' => ['nullable', 'string'],
                 'infos.*.image' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
             ]);
+            
+            // Strict Access Check
+            $room = Room::with('level.building')->find($data['room_id']);
+            if (!$room || !$room->level?->building) {
+                 return back()->with('error', 'Unauthorized access to selected room.');
+            }
+
+            $category = Category::find($data['category_id']);
+            if (!$category) {
+                 return back()->with('error', 'Unauthorized access to selected category.');
+            }
 
             // Security: Remove visibility fields if user lacks permission
             if ($request->user()->cannot('manage-asset-visibility')) {
@@ -1068,7 +1101,7 @@ class AssetsController extends Controller
 
                 // Record movement if room changed
                 if ($oldRoomId != $data['room_id']) {
-                    \App\Models\AssetMovement::create([
+                    AssetMovement::create([
                         'asset_id' => $asset->id,
                         'from_room_id' => $oldRoomId,
                         'to_room_id' => $data['room_id'],
@@ -1148,10 +1181,9 @@ class AssetsController extends Controller
 
     public function destroy(Request $request, Asset $asset): JsonResponse
     {
-        $departmentId = $request->session()->get('selected_department_id');
-        $isOwner = $asset->department_id === $departmentId;
-        $isSuperAdmin = $request->user()->hasRole('SuperAdmin');
-        abort_unless($isOwner || $isSuperAdmin, 403);
+        $isGlobalAdmin = session('is_admin_department');
+        $canManage = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
+        abort_unless($canManage, 403, 'Unauthorized: You do not have management permissions for this asset or its category.');
 
         // Safety Logic: Block deletion if it has linked records
         
@@ -1161,8 +1193,8 @@ class AssetsController extends Controller
         }
 
         // 2. Check for movement/audit history (Rule 2 & 7: Components/Assets with history are protected)
-        // Allow SuperAdmin to force delete even with history
-        if ($asset->movements()->exists() && !$isSuperAdmin) {
+        // Allow Global Admin to force delete even with history
+        if ($asset->movements()->exists() && !$isGlobalAdmin) {
             return response()->json([
                 'error' => 'Cannot delete — asset has historical audit/movement logs.'
             ], 422);
@@ -1178,10 +1210,9 @@ class AssetsController extends Controller
 
     public function transfer(Request $request, Asset $asset): JsonResponse
     {
-        // Only SuperAdmins can transfer assets between departments
-        /** @var \App\Models\User $authUser */
-        $authUser = $request->user();
-        abort_unless($authUser->hasRole('SuperAdmin'), 403);
+        $isGlobalAdmin = session('is_admin_department');
+        $canManage = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
+        abort_unless($canManage, 403);
 
         $data = $request->validate([
             'department_id' => ['required', 'integer', 'exists:departments,id'],
@@ -1200,7 +1231,7 @@ class AssetsController extends Controller
             ]);
 
             // Record movement
-            \App\Models\AssetMovement::create([
+            AssetMovement::create([
                 'asset_id' => $asset->id,
                 'from_department_id' => $oldDepartmentId,
                 'to_department_id' => $data['department_id'],
@@ -1218,16 +1249,15 @@ class AssetsController extends Controller
 
     public function updateStatus(Request $request, Asset $asset): RedirectResponse
     {
-        $departmentId = $request->session()->get('selected_department_id');
-        $isOwner = $asset->department_id === $departmentId;
-        $isSuperAdmin = $request->user()->hasRole('SuperAdmin');
-        abort_unless($isOwner || $isSuperAdmin, 403);
+        $isGlobalAdmin = session('is_admin_department');
+        $canUpdate = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
+        abort_unless($canUpdate, 403);
 
         /** @var \App\Models\User $user */
         $user = $request->user();
         
         // Data entry cannot change status after initial save
-        if ($user->hasRole('Data Entry') && !$user->hasRole('SuperAdmin') && !$user->hasRole('Admin')) {
+        if ($user->hasRole('Data Entry') && !$isGlobalAdmin && !$user->hasRole('Admin')) {
             abort(403, 'Insufficient permissions to modify status.');
         }
 
@@ -1245,14 +1275,13 @@ class AssetsController extends Controller
 
     public function updateSharing(Request $request, Asset $asset): RedirectResponse
     {
-        $departmentId = $request->session()->get('selected_department_id');
-        $isOwner = $asset->department_id === $departmentId;
-        $isSuperAdmin = $request->user()->hasRole('SuperAdmin');
-        abort_unless($isOwner || $isSuperAdmin, 403);
+        $isGlobalAdmin = session('is_admin_department');
+        $canUpdate = $isGlobalAdmin || Asset::where('id', $asset->id)->exists();
+        abort_unless($canUpdate, 403);
 
         /** @var \App\Models\User $user */
         $user = $request->user();
-        abort_unless($user->hasRole('SuperAdmin') || $user->hasRole('Admin'), 403);
+        abort_unless($isGlobalAdmin || $user->hasRole('Admin'), 403);
 
         $data = $request->validate([
             'is_shared' => ['required', 'boolean'],

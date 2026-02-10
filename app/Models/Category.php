@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Category extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasDepartmentVisibility;
 
     protected $fillable = [
         'name',
@@ -24,6 +24,11 @@ class Category extends Model
     public function subCategories(): HasMany
     {
         return $this->hasMany(SubCategory::class);
+    }
+
+    public function assets(): HasMany
+    {
+        return $this->hasMany(Asset::class);
     }
 
     public function departments(): BelongsToMany

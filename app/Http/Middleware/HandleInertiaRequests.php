@@ -99,10 +99,10 @@ class HandleInertiaRequests extends Middleware
 
             $departmentPayload = [
                 'selectedId' => $selectedDepartmentId,
-                'list' => $user->departments()
-                    ->select('departments.id', 'departments.name')
-                    ->orderBy('departments.name')
-                    ->get(),
+                'isAdmin' => (bool) $request->session()->get('is_admin_department'),
+                'list' => ($user->hasRole('SuperAdmin') && $user->departments()->where('departments.code', 'ADMIN')->exists())
+                    ? Department::select('id', 'name')->orderBy('name')->get()
+                    : $user->departments()->select('departments.id', 'departments.name')->orderBy('departments.name')->get(),
                 'featuresEnabled' => $featureKeys,
                 'sidebar' => $sidebar,
             ];

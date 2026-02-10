@@ -59,4 +59,9 @@ class Department extends Model
     {
         return $this->department_logo ? asset('storage/' . $this->department_logo) : null;
     }
+
+    public function isAdmin(): bool
+    {
+        return $this->code === 'ADMIN';
+    }
 }

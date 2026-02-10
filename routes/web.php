@@ -178,6 +178,9 @@ Route::middleware(['auth', 'verified', 'department.selected', 'feature.enabled:a
     Route::post('/rooms', [RoomsController::class, 'store'])
         ->middleware('permission:room-create')
         ->name('rooms.store');
+    Route::get('/rooms/{room}', [RoomsController::class, 'show'])
+        ->middleware('permission:room-list')
+        ->name('rooms.show');
     Route::get('/rooms/{room}/edit', [RoomsController::class, 'edit'])
         ->middleware('permission:room-edit')
         ->name('rooms.edit');

@@ -34,6 +34,8 @@ class StoreBuildingRequest extends FormRequest
             'name_ar' => ['nullable', 'string', 'max:255'],
             'is_shared' => ['boolean'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
+            'department_ids' => ['required', 'array'],
+            'department_ids.*' => ['integer', 'exists:departments,id'],
         ];
     }
 }

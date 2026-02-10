@@ -64,13 +64,43 @@ const can = (permission) => permissions.value.includes(permission);
                         </Link>
                     </div>
 
-                    <div class="rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center bg-gray-50/50">
+                    <div v-if="building.levels && building.levels.length > 0" class="space-y-6">
+                        <div v-for="level in building.levels" :key="level.id" class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                            <h4 class="text-md font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <svg class="h-5 w-5 text-[#3d4adb]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                {{ level.name }}
+                            </h4>
+                            
+                            <div v-if="level.rooms && level.rooms.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <Link 
+                                    v-for="room in level.rooms" 
+                                    :key="room.id" 
+                                    :href="route('rooms.show', room.id)"
+                                    class="group relative flex items-center gap-3 p-3 rounded-xl border border-dashed border-gray-200 hover:border-[#3d4adb]/30 hover:bg-[#3d4adb]/5 transition-all"
+                                >
+                                    <div class="h-10 w-10 flex items-center justify-center rounded-lg bg-gray-50 text-gray-400 group-hover:bg-white group-hover:text-[#3d4adb] transition-colors">
+                                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                         <p class="text-sm font-bold text-gray-700 group-hover:text-[#3d4adb]">{{ room.name }}</p>
+                                         <p class="text-xs font-mono text-gray-400">{{ room.code || 'No Code' }}</p>
+                                    </div>
+                                </Link>
+                            </div>
+                            <p v-else class="text-sm text-gray-400 italic py-2">No rooms registered on this level.</p>
+                        </div>
+                    </div>
+                    
+                    <div v-else class="rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center bg-gray-50/50">
                         <div class="mx-auto h-12 w-12 text-gray-300 mb-3">
                             <svg fill="none" class="h-10 w-10 text-gray-300" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                         </div>
                         <p class="text-sm font-medium text-gray-500">
-                            This building has {{ building.rooms_count }} registered rooms. <br>
-                            Detail view for rooms is under construction.
+                            No levels or rooms have been registered for this building yet.
                         </p>
                     </div>
                 </div>

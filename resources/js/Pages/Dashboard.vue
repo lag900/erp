@@ -141,6 +141,34 @@ const currentDate = new Date().toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
 });
+
+const groupedActivityLogs = computed(() => {
+    const logs = props.activityLogs;
+    if (!logs || logs.length === 0) return [];
+
+    const grouped = [];
+    let currentGroup = null;
+
+    logs.forEach(log => {
+        // Group strictly identical consecutive logs (same user, action, description, timestamp)
+        // This handles the user's complaint about repeating logs
+        const matches = currentGroup && 
+            currentGroup.user?.id === log.user?.id && 
+            currentGroup.action === log.action && 
+            currentGroup.description === log.description &&
+            currentGroup.created_at === log.created_at;
+
+        if (matches) {
+            currentGroup.count++;
+        } else {
+            if (currentGroup) grouped.push(currentGroup);
+            currentGroup = { ...log, count: 1 };
+        }
+    });
+    if (currentGroup) grouped.push(currentGroup);
+    
+    return grouped;
+});
 </script>
 
 <template>
@@ -485,9 +513,14 @@ const currentDate = new Date().toLocaleDateString('en-US', {
                                 </div>
 
                                 <div class="flow-root">
-                                    <ul v-if="activityLogs.length > 0" role="list" class="space-y-8">
-                                        <li v-for="(log, logIdx) in activityLogs" :key="log.id">
+                                    <ul v-if="groupedActivityLogs.length > 0" role="list" class="space-y-8">
+                                        <li v-for="(log, logIdx) in groupedActivityLogs" :key="log.id">
                                             <div class="relative flex gap-4">
+                                                <!-- Log Count Badge -->
+                                                <div v-if="log.count > 1" class="absolute -left-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-md ring-2 ring-white">
+                                                    {{ log.count }}
+                                                </div>
+
                                                 <div class="relative flex-shrink-0">
                                                     <div class="h-10 w-10 rounded-xl ring-2 ring-white overflow-hidden shadow-sm bg-slate-100 flex items-center justify-center">
                                                         <img v-if="log.user?.profile_photo_path" :src="log.user.profile_photo_url" :alt="log.user.name" class="h-full w-full object-cover">
@@ -539,10 +572,10 @@ const currentDate = new Date().toLocaleDateString('en-US', {
                                 </div>
                                 <div class="mt-10 pt-8 border-t border-slate-100">
                                     <Link 
-                                        :href="route('assets.index')"
+                                        :href="route('audit.index')"
                                         class="flex items-center justify-center w-full h-12 rounded-xl border border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-widest hover:bg-slate-50 hover:text-slate-800 transition-all"
                                     >
-                                        Access Governance Central
+                                        View Full Audit Stream
                                         <svg class="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
                                         </svg>

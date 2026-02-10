@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Building extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\HasDepartmentVisibility;
 
     protected $fillable = [
         'location_id',
@@ -50,6 +50,11 @@ class Building extends Model
     public function rooms(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
         return $this->hasManyThrough(Room::class, Level::class);
+    }
+
+    public function departments(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'building_department')->withTimestamps();
     }
 
     protected static function booted(): void

@@ -15,7 +15,8 @@ class LevelsController extends Controller
     {
         $departmentId = $request->session()->get('selected_department_id');
 
-        $levels = Level::with('building.location')
+        $levels = Level::whereHas('building') // Scope to visible buildings
+            ->with('building.location')
             ->orderBy('level_number')
             ->orderBy('name')
             ->get()
@@ -39,7 +40,7 @@ class LevelsController extends Controller
 
     public function create(): Response
     {
-        $buildings = Building::with('location')
+        $buildings = Building::with('location') // Building Model Scope applies
             ->orderBy('name')
             ->get()
             ->map(function (Building $building) {
@@ -62,10 +63,15 @@ class LevelsController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'building_id' => ['required', 'integer', 'exists:buildings,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'level_number' => ['nullable', 'integer'],
+             'building_id' => ['required', 'integer', 'exists:buildings,id'],
+             'name' => ['required', 'string', 'max:255'],
+             'level_number' => ['nullable', 'integer'],
         ]);
+        
+         // Validation check: ensure building is accessible
+         if (!Building::find($data['building_id'])) {
+             return back()->with('error', 'Invalid building selected.');
+         }
 
         Level::create($data);
 
@@ -74,6 +80,11 @@ class LevelsController extends Controller
 
     public function edit(Level $level): Response
     {
+        $level->load('building');
+        if (!$level->building) {
+            abort(403, 'Unauthorized access to this level.');
+        }
+
         $buildings = Building::with('location')
             ->orderBy('name')
             ->get()
@@ -102,6 +113,11 @@ class LevelsController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'level_number' => ['nullable', 'integer'],
         ]);
+
+         // Validation check: ensure building is accessible
+         if (!Building::find($data['building_id'])) {
+             return back()->with('error', 'Invalid building selected.');
+         }
 
         $level->update($data);
 

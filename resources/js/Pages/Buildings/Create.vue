@@ -14,6 +14,10 @@ const props = defineProps({
         type: Array,
         required: true,
     },
+    departments: {
+        type: Array,
+        required: true,
+    },
 });
 
 const page = usePage();
@@ -25,6 +29,7 @@ const form = useForm({
     name_en: '',
     name_ar: '',
     is_shared: false,
+    department_ids: [],
     image: null,
 });
 
@@ -143,6 +148,28 @@ const handleImageUpload = async (e) => {
                                 v-model:checked="form.is_shared"
                              />
                              <InputLabel for="is_shared" value="This is a shared building (available across all departments)" />
+                        </div>
+
+                        <!-- Department Assignment -->
+                        <div class="sm:col-span-2">
+                            <InputLabel value="Assigned Departments" />
+                            <p class="text-xs text-gray-500 mb-3">Select one or more departments that have access to this building.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 border rounded-lg p-4 bg-gray-50">
+                                <div v-for="dept in departments" :key="dept.id" class="flex items-center gap-3">
+                                    <input 
+                                        type="checkbox" 
+                                        :id="'dept-' + dept.id"
+                                        :value="dept.id"
+                                        v-model="form.department_ids"
+                                        class="rounded border-gray-300 text-primary shadow-sm focus:ring-primary h-4 w-4"
+                                    />
+                                    <label :for="'dept-' + dept.id" class="text-sm text-gray-700 cursor-pointer select-none">
+                                        {{ dept.name }}
+                                        <span v-if="dept.name === 'Administration'" class="ml-1 text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-bold uppercase tracking-wider">Root</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <InputError class="mt-2" :message="form.errors.department_ids" />
                         </div>
 
                         <div class="sm:col-span-2">

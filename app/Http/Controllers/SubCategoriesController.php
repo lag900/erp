@@ -23,7 +23,8 @@ class SubCategoriesController extends Controller
 
     public function index(Request $request): Response
     {
-        $subCategories = SubCategory::with('category')
+        $subCategories = SubCategory::whereHas('category') // Ensure parent Category is visible
+            ->with('category')
             ->orderBy('name')
             ->get()
             ->map(fn (SubCategory $subCategory) => [
@@ -42,7 +43,7 @@ class SubCategoriesController extends Controller
 
     public function create(): Response
     {
-        $categories = Category::query()
+        $categories = Category::query() // Global Scope applies
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -54,9 +55,14 @@ class SubCategoriesController extends Controller
     public function store(StoreSubCategoryRequest $request)
     {
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
-                $data = $request->validated();
+             $data = $request->validated();
+             
+             // Check Access
+             if (!Category::find($data['category_id'])) {
+                 return back()->with('error', 'Unauthorized category.');
+             }
 
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $data) {
                 // Auto Generate or Safeguard provided code
                 if (empty($data['code'])) {
                     $data['code'] = CodeGeneratorService::generateModelCode($data['name'], SubCategory::class);
@@ -74,12 +80,19 @@ class SubCategoriesController extends Controller
             });
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Failed to create subcategory: ' . $e->getMessage());
-            return back()->with('error', 'Could not create subcategory. The system encountered a conflict or error. Please try again.');
+            // return back()->with('error', 'Could not create subcategory. The system encountered a conflict or error. Please try again.');
+            throw $e; // Or return error
+             return back()->with('error', $e->getMessage());
         }
     }
 
     public function edit(SubCategory $subCategory): Response
     {
+        $subCategory->load('category');
+        if (!$subCategory->category) {
+            abort(403, 'Unauthorized access.');
+        }
+
         $categories = Category::query()
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -99,8 +112,16 @@ class SubCategoriesController extends Controller
     public function update(UpdateSubCategoryRequest $request, SubCategory $subCategory)
     {
         try {
-            return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $subCategory) {
-                $data = $request->validated();
+             $data = $request->validated();
+             
+             // Check Access if category changed
+             if (isset($data['category_id'])) {
+                 if (!Category::find($data['category_id'])) {
+                     return back()->with('error', 'Unauthorized category.');
+                 }
+             }
+
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $subCategory, $data) {
                 unset($data['image']);
 
                 // Ensure unique code if provided and changed
@@ -124,6 +145,9 @@ class SubCategoriesController extends Controller
 
     public function destroy(SubCategory $subCategory, Request $request)
     {
+        $subCategory->load('category');
+        if (!$subCategory->category) abort(403);
+
         if ($subCategory->image) {
             $this->fileService->deleteFile($subCategory->image);
         }
@@ -141,6 +165,9 @@ class SubCategoriesController extends Controller
     {
         $categoryId = $request->query('category_id');
         if (!$categoryId) return response()->json([]);
+        
+        // Ensure category is visible
+        if (!Category::find($categoryId)) return response()->json([]);
 
         $items = SubCategory::where('category_id', $categoryId)
             ->orderBy('name')

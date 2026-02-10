@@ -26,6 +26,13 @@ class DashboardController extends Controller
         $department = $departmentId ? Department::find($departmentId) : null;
         $user = $request->user();
 
+        $isGlobal = session('is_admin_department');
+
+        $usersQuery = User::orderBy('name');
+        if (!$isGlobal && $departmentId) {
+            $usersQuery->whereHas('departments', fn($q) => $q->where('departments.id', $departmentId));
+        }
+
         return Inertia::render('Dashboard', [
             'department' => $department,
             'stats' => $this->getStats($departmentId),
@@ -37,7 +44,7 @@ class DashboardController extends Controller
             'activityLogs' => $this->getActivityLogs($request, $user, $departmentId),
             'logActions' => AuditLog::distinct()->pluck('action_type'),
             'allUsers' => ($user->hasRole('SuperAdmin') || $user->can('view-audit-logs'))
-                ? User::orderBy('name')->get(['id', 'name'])
+                ? $usersQuery->get(['id', 'name'])
                 : [],
             'recentActivity' => $this->getRecentActivity($departmentId),
             'hasDepartmentSelected' => (bool) $departmentId,
@@ -47,39 +54,129 @@ class DashboardController extends Controller
 
     private function getStats($departmentId): array
     {
+        $isGlobal = session('is_admin_department');
+
+        $assetQuery = DB::table('assets')
+            ->whereNull('deleted_at');
+
+        if (!$isGlobal && $departmentId) {
+            $assetQuery->where(function ($q) use ($departmentId) {
+                $q->where('department_id', $departmentId)
+                  ->orWhereExists(function ($sq) use ($departmentId) {
+                      $sq->select(DB::raw(1))
+                         ->from('asset_department')
+                         ->whereColumn('asset_department.asset_id', 'assets.id')
+                         ->where('asset_department.department_id', $departmentId);
+                  })
+                  ->orWhereExists(function ($sq) use ($departmentId) {
+                      $sq->select(DB::raw(1))
+                         ->from('category_department')
+                         ->whereColumn('category_department.category_id', 'assets.category_id')
+                         ->where('category_department.department_id', $departmentId);
+                  });
+            })
+            ->whereExists(function ($bq) use ($departmentId) {
+                $bq->select(DB::raw(1))
+                   ->from('rooms')
+                   ->join('levels', 'rooms.level_id', '=', 'levels.id')
+                   ->join('buildings', 'levels.building_id', '=', 'buildings.id')
+                   ->join('building_department', 'buildings.id', '=', 'building_department.building_id')
+                   ->whereColumn('rooms.id', 'assets.room_id')
+                   ->where('building_department.department_id', $departmentId);
+            });
+        }
+
         return [
-            'assets' => $departmentId ? Asset::where('department_id', $departmentId)->sum('count') : 0,
-            'locations' => Location::count(),
-            'buildings' => Building::count(),
-            'rooms' => Room::count(),
-            'users' => $departmentId
-                ? User::whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId))->count()
-                : 0,
+            'assets' => (int) $assetQuery->sum('count'),
+            'locations' => DB::table('locations')
+                ->where(function($q) use ($isGlobal, $departmentId) {
+                    if (!$isGlobal && $departmentId) {
+                        $q->whereExists(function($sq) use ($departmentId) {
+                            $sq->select(DB::raw(1))
+                               ->from('buildings')
+                               ->join('building_department', 'buildings.id', '=', 'building_department.building_id')
+                               ->whereColumn('buildings.location_id', 'locations.id')
+                               ->where('building_department.department_id', $departmentId);
+                        });
+                    }
+                })->count(),
+            'buildings' => Building::count(), 
+            'rooms' => Room::whereHas('level.building')->count(), 
+            'users' => $isGlobal 
+                ? User::count() 
+                : ($departmentId ? User::whereHas('departments', fn ($q) => $q->where('departments.id', $departmentId))->count() : 0),
             'news' => News::count(),
         ];
     }
 
     private function getAssetsByCategory($departmentId)
     {
-        if (!$departmentId) return [];
+        $isGlobal = session('is_admin_department');
+        
+        $query = DB::table('assets')
+            ->join('categories', 'assets.category_id', '=', 'categories.id')
+            ->whereNull('assets.deleted_at')
+            ->select(
+                DB::raw('COALESCE(categories.name_ar, categories.name) as name'),
+                DB::raw('SUM(assets.count) as total')
+            );
 
-        return Category::select('categories.name', DB::raw('SUM(assets.count) as total'))
-            ->join('assets', 'categories.id', '=', 'assets.category_id')
-            ->where('assets.department_id', $departmentId)
-            ->groupBy('categories.id', 'categories.name')
+        if (!$isGlobal && $departmentId) {
+            $query->where(function ($q) use ($departmentId) {
+                $q->where('assets.department_id', $departmentId)
+                  ->orWhereExists(function ($sq) use ($departmentId) {
+                      $sq->select(DB::raw(1))
+                         ->from('category_department')
+                         ->whereColumn('category_department.category_id', 'categories.id')
+                         ->where('category_department.department_id', $departmentId);
+                  });
+            })
+            ->whereExists(function ($bq) use ($departmentId) {
+                $bq->select(DB::raw(1))
+                   ->from('rooms')
+                   ->join('levels', 'rooms.level_id', '=', 'levels.id')
+                   ->join('buildings', 'levels.building_id', '=', 'buildings.id')
+                   ->join('building_department', 'buildings.id', '=', 'building_department.building_id')
+                   ->whereColumn('rooms.id', 'assets.room_id')
+                   ->where('building_department.department_id', $departmentId);
+            });
+        }
+
+        return $query->groupBy('categories.id', 'categories.name', 'categories.name_ar')
+            ->orderByDesc('total')
             ->get();
     }
 
     private function getRecentActivity($departmentId)
     {
-        if (!$departmentId) return [];
+        $isGlobal = session('is_admin_department');
+        
+        $query = Asset::with(['category', 'subCategory', 'room.level.building.location'])
+            ->whereHas('category', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('category_department')
+                           ->whereColumn('category_department.category_id', 'categories.id')
+                           ->where('category_department.department_id', $departmentId);
+                    });
+                }
+            })
+            ->whereHas('room.level.building', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('building_department')
+                           ->whereColumn('building_department.building_id', 'buildings.id')
+                           ->where('building_department.department_id', $departmentId);
+                    });
+                }
+            })
+            ->latest('updated_at');
 
-        return Asset::with(['category', 'subCategory', 'room.level.building.location'])
-            ->where('department_id', $departmentId)
-            ->latest('updated_at')
-            ->take(5)
+        return $query->take(5)
             ->get()
-            ->map(fn($asset) => [
+            ->map(fn ($asset) => [
                 'id' => $asset->id,
                 'name' => ($asset->category?->name ?? 'Unknown') . ($asset->subCategory ? " - {$asset->subCategory->name}" : ""),
                 'category' => $asset->category?->name ?? 'Uncategorized',
@@ -91,24 +188,71 @@ class DashboardController extends Controller
 
     private function getAssetsBySubcategory($departmentId)
     {
-        if (!$departmentId) return [];
+        $isGlobal = session('is_admin_department');
+        
+        $query = DB::table('assets')
+            ->join('sub_categories', 'assets.sub_category_id', '=', 'sub_categories.id')
+            ->join('categories', 'sub_categories.category_id', '=', 'categories.id')
+            ->whereNull('assets.deleted_at')
+            ->select(
+                DB::raw('COALESCE(sub_categories.name_ar, sub_categories.name) as name'),
+                DB::raw('SUM(assets.count) as total')
+            );
 
-        return SubCategory::select('sub_categories.name', DB::raw('SUM(assets.count) as total'))
-            ->join('assets', 'sub_categories.id', '=', 'assets.sub_category_id')
-            ->where('assets.department_id', $departmentId)
-            ->groupBy('sub_categories.id', 'sub_categories.name')
+        if (!$isGlobal && $departmentId) {
+            $query->where(function ($q) use ($departmentId) {
+                 $q->where('assets.department_id', $departmentId)
+                   ->orWhereExists(function ($sq) use ($departmentId) {
+                       $sq->select(DB::raw(1))
+                          ->from('category_department')
+                          ->whereColumn('category_department.category_id', 'categories.id')
+                          ->where('category_department.department_id', $departmentId);
+                   });
+            })
+            ->whereExists(function ($bq) use ($departmentId) {
+                $bq->select(DB::raw(1))
+                   ->from('rooms')
+                   ->join('levels', 'rooms.level_id', '=', 'levels.id')
+                   ->join('buildings', 'levels.building_id', '=', 'buildings.id')
+                   ->join('building_department', 'buildings.id', '=', 'building_department.building_id')
+                   ->whereColumn('rooms.id', 'assets.room_id')
+                   ->where('building_department.department_id', $departmentId);
+            });
+        }
+
+        return $query->groupBy('sub_categories.id', 'sub_categories.name', 'sub_categories.name_ar')
             ->orderByDesc('total')
             ->get();
     }
 
     private function getTopAssetGroups($departmentId)
     {
-        if (!$departmentId) return [];
+        $isGlobal = session('is_admin_department');
 
-        return Asset::select('group_name', DB::raw('SUM(count) as total'))
+        $query = Asset::select('group_name', DB::raw('SUM(count) as total'))
             ->whereNotNull('group_name')
-            ->where('department_id', $departmentId)
-            ->groupBy('group_name')
+            ->whereHas('category', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('category_department')
+                           ->whereColumn('category_department.category_id', 'categories.id')
+                           ->where('category_department.department_id', $departmentId);
+                    });
+                }
+            })
+            ->whereHas('room.level.building', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('building_department')
+                           ->whereColumn('building_department.building_id', 'buildings.id')
+                           ->where('building_department.department_id', $departmentId);
+                    });
+                }
+            });
+
+        return $query->groupBy('group_name')
             ->orderByDesc('total')
             ->take(5)
             ->get();
@@ -116,15 +260,7 @@ class DashboardController extends Controller
 
     private function getMostEnteredData($departmentId)
     {
-        if (!$departmentId) return [];
-
-        return SubCategory::select('sub_categories.name', DB::raw('SUM(assets.count) as total'))
-            ->join('assets', 'sub_categories.id', '=', 'assets.sub_category_id')
-            ->where('assets.department_id', $departmentId)
-            ->groupBy('sub_categories.id', 'sub_categories.name')
-            ->orderByDesc('total')
-            ->take(5)
-            ->get();
+        return $this->getAssetsBySubcategory($departmentId)->take(5);
     }
 
     private function getActivityLogs(Request $request, $user, $departmentId)
@@ -132,14 +268,23 @@ class DashboardController extends Controller
         $query = AuditLog::with(['user' => fn($q) => $q->select('id', 'name', 'image')])
             ->latest();
 
-        if (!$user->can('view-audit-logs') && !$user->hasRole('SuperAdmin')) {
-            if ($user->hasRole('Admin') && $departmentId) {
+        $isGlobal = session('is_admin_department');
+
+        // If not Global Admin, restrict logs
+        if (!$isGlobal) {
+             if ($departmentId) {
+                // Get users primarily from this department
+                // Note: This relies on users being assigned to department to see their logs.
+                // If a user did something in this department but is assigned elsewhere, it might be tricky.
+                // But generally Department Admin sees actions of users IN their department.
                 $departmentUserIds = User::whereHas('departments', fn($q) => $q->where('departments.id', $departmentId))->pluck('id');
                 $query->whereIn('user_id', $departmentUserIds);
-            } else {
-                $query->where('user_id', $user->id);
-            }
+             } else {
+                 // No department context? Show only own logs
+                 $query->where('user_id', $user->id);
+             }
         }
+        // Global Admins see everything.
 
         if ($request->filled('log_user_id')) $query->where('user_id', $request->log_user_id);
         if ($request->filled('log_action')) $query->where('action_type', $request->log_action);
@@ -165,20 +310,63 @@ class DashboardController extends Controller
 
     private function getTopContributors($departmentId)
     {
-        if (!$departmentId) return [];
-
-        $topContributorsRaw = Asset::select('created_by_id', DB::raw('COUNT(*) as total'))
-            ->where('department_id', $departmentId)
+        $isGlobal = session('is_admin_department');
+        
+        $query = Asset::select('created_by_id', DB::raw('COUNT(*) as total'))
+            ->whereHas('category', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('category_department')
+                           ->whereColumn('category_department.category_id', 'categories.id')
+                           ->where('category_department.department_id', $departmentId);
+                    });
+                }
+            })
+            ->whereHas('room.level.building', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('building_department')
+                           ->whereColumn('building_department.building_id', 'buildings.id')
+                           ->where('building_department.department_id', $departmentId);
+                    });
+                }
+            })
             ->whereNotNull('created_by_id')
-            ->with('creator.roles')
-            ->groupBy('created_by_id')
+            ->with(['creator.roles', 'creator.departments']);
+            
+        $topContributorsRaw = $query->groupBy('created_by_id')
             ->orderByDesc('total')
             ->take(10)
             ->get();
         
-        $grandTotalAssets = Asset::where('department_id', $departmentId)->count() ?: 1;
+        // Sum total assets visible to this department for percentage calculation
+        $grandTotalAssets = Asset::whereHas('category', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('category_department')
+                           ->whereColumn('category_department.category_id', 'categories.id')
+                           ->where('category_department.department_id', $departmentId);
+                    });
+                }
+            })
+            ->whereHas('room.level.building', function ($q) use ($isGlobal, $departmentId) {
+                if (!$isGlobal && $departmentId) {
+                    $q->whereExists(function ($sq) use ($departmentId) {
+                        $sq->select(DB::raw(1))
+                           ->from('building_department')
+                           ->whereColumn('building_department.building_id', 'buildings.id')
+                           ->where('building_department.department_id', $departmentId);
+                    });
+                }
+            })
+            ->count();
+            
+        $grandTotalAssets = $grandTotalAssets ?: 1;
 
-        return $topContributorsRaw->map(fn($item) => [
+        return $topContributorsRaw->map(fn ($item) => [
             'user_id' => $item->created_by_id,
             'name' => $item->creator?->name ?? 'Unknown User',
             'role' => $item->creator && $item->creator->roles->isNotEmpty() ? $item->creator->roles->first()->name : 'User',

@@ -249,7 +249,7 @@ class Asset extends Model
         });
 
         $query->when($filters['category_id'] ?? null, function ($query, $catId) {
-            $query->whereHas('subCategory', fn($q) => $q->where('category_id', $catId));
+            $query->where('category_id', $catId);
         });
 
         $query->when($filters['sub_category_id'] ?? null, function ($query, $subId) {

@@ -39,19 +39,27 @@ class BuildingsController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        $this->authorizeAdministration($request->user());
+
         $locations = Location::query()
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $departments = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+
         return Inertia::render('Buildings/Create', [
             'locations' => $locations,
+            'departments' => $departments,
         ]);
     }
 
     public function show(Building $building): Response
     {
+        $building->load(['levels.rooms' => function ($query) {
+            $query->orderBy('name');
+        }]);
         $building->loadCount('rooms');
         
         return Inertia::render('Buildings/Show', [
@@ -62,15 +70,32 @@ class BuildingsController extends Controller
                 'image_url' => $building->image_url,
                 'location_id' => $building->location_id,
                 'rooms_count' => $building->rooms_count,
+                'levels' => $building->levels->sortBy('level_number')->values()->map(function ($level) {
+                    return [
+                        'id' => $level->id,
+                        'name' => $level->name,
+                        'rooms' => $level->rooms->map(function ($room) {
+                            return [
+                                'id' => $room->id,
+                                'name' => $room->name,
+                                'code' => $room->code,
+                            ];
+                        }),
+                    ];
+                }),
             ],
         ]);
     }
 
     public function store(StoreBuildingRequest $request)
     {
+        $this->authorizeAdministration($request->user());
+
         try {
             return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
                 $data = $request->validated();
+                $departmentIds = $data['department_ids'] ?? [];
+                unset($data['department_ids']);
 
                 // Generate building code
                 $data['code'] = CodeGeneratorService::generateBuildingCode(
@@ -85,7 +110,8 @@ class BuildingsController extends Controller
                     $data['image'] = $this->fileService->updateFile($request->file('image'), 'buildings');
                 }
 
-                Building::create($data);
+                $building = Building::create($data);
+                $building->departments()->sync($departmentIds);
 
                 return redirect()->route('buildings.index')->with('success', 'Building created successfully.');
             });
@@ -95,21 +121,33 @@ class BuildingsController extends Controller
         }
     }
 
-    public function edit(Building $building): Response
+    public function edit(Request $request, Building $building): Response
     {
+        $this->authorizeAdministration($request->user());
+
         $locations = Location::query()
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $departments = \App\Models\Department::select('id', 'name')->orderBy('name')->get();
+
         return Inertia::render('Buildings/Edit', [
-            'building' => $building->only('id', 'name', 'name_en', 'name_ar', 'code', 'is_shared', 'location_id', 'image_url'),
+            'building' => [
+                ...$building->only('id', 'name', 'name_en', 'name_ar', 'code', 'is_shared', 'location_id', 'image_url'),
+                'department_ids' => $building->departments->pluck('id'),
+            ],
             'locations' => $locations,
+            'departments' => $departments,
         ]);
     }
 
     public function update(UpdateBuildingRequest $request, Building $building)
     {
+        $this->authorizeAdministration($request->user());
+
         $data = $request->validated();
+        $departmentIds = $data['department_ids'] ?? [];
+        unset($data['department_ids']);
         unset($data['image']);
         $data['name'] = $data['name_en'];
 
@@ -118,12 +156,15 @@ class BuildingsController extends Controller
         }
 
         $building->update($data);
+        $building->departments()->sync($departmentIds);
 
         return redirect()->route('buildings.index')->with('success', 'Building updated successfully.');
     }
 
     public function destroy(Building $building, Request $request)
     {
+        $this->authorizeAdministration($request->user());
+
         if ($building->image) {
             $this->fileService->deleteFile($building->image);
         }
@@ -134,5 +175,12 @@ class BuildingsController extends Controller
         }
 
         return redirect()->route('buildings.index')->with('success', 'Building deleted successfully.');
+    }
+
+    private function authorizeAdministration($user) {
+        $isGlobalAdmin = session('is_admin_department') || 
+                         ($user->hasRole('SuperAdmin') && $user->departments()->where('departments.code', 'ADMIN')->exists());
+                         
+        abort_unless($isGlobalAdmin, 403, 'Restricted: Only Administration can manage buildings.');
     }
 }
